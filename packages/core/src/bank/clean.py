@@ -1,6 +1,7 @@
 """清洗规则：能报错就报错，能记账就记账，**不许悄悄删行**。
 
-每条规则都返回命中行数，写进 manifest；致命规则命中即中止，非致命规则只登记台账。
+每条规则登记在 `bank.rules`，这里只写"怎么判命中"，不写"命中之后怎么办"。
+判命中的函数返回布尔掩码；行数、致命/记账、说明由注册表统一带出来。
 规则本身不修改数据——数据的派生由 `dataset.build_dataset` 负责，两者不混在一起。
 """
 
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from bank import rules as R
 from bank import schema as S
 
 
@@ -33,66 +35,73 @@ def _count(mask: pd.Series) -> int:
     return int(mask.fillna(False).sum())
 
 
-def run_checks(df: pd.DataFrame) -> list[Finding]:
-    """按固定顺序跑全部规则。顺序固定，台账才可比。"""
-    findings: list[Finding] = []
+# ---------------------------------------------------------------- 注册的规则
 
-    # R1 标签取值：只有 是/否 两种，其它值必须炸，不能当负例
-    bad_label = ~df[S.TARGET_RAW].isin([S.POSITIVE, S.NEGATIVE])
-    findings.append(
-        Finding(
-            "R1_标签取值",
-            _count(bad_label),
-            True,
-            f"{S.TARGET_RAW} 只能是 {S.POSITIVE}/{S.NEGATIVE}",
-        )
-    )
 
-    # R2 哨兵之外的负数：-1 是"从未联系"，其余负数没有业务含义
+# R1 标签取值：只有 是/否 两种，其它值必须炸，不能当负例
+@R.rule(
+    "R1_标签取值", "标签取值", fatal=True, note=f"{S.TARGET_RAW} 只能是 {S.POSITIVE}/{S.NEGATIVE}"
+)
+def _bad_label(df: pd.DataFrame) -> pd.Series:
+    return ~df[S.TARGET_RAW].isin([S.POSITIVE, S.NEGATIVE])
+
+
+# R2 哨兵之外的负数：-1 是"从未联系"，其余负数没有业务含义
+@R.rule("R2_pdays非法负值", "pdays 非法负值", fatal=True, note="-1 之外不允许负数")
+def _bad_pdays(df: pd.DataFrame) -> pd.Series:
     pdays = pd.to_numeric(df[S.PDAYS], errors="coerce")
-    bad_pdays = pdays < 0
-    bad_pdays &= pdays != S.PDAYS_SENTINEL
-    findings.append(Finding("R2_pdays非法负值", _count(bad_pdays), True, "-1 之外不允许负数"))
+    return (pdays < 0) & (pdays != S.PDAYS_SENTINEL)
 
-    # R3 口径冲突：联系过却没有上次结果。业务上可能（上次是别的活动），保留原值、只记账
-    conflict = (pdays != S.PDAYS_SENTINEL) & (df[S.POUTCOME] == S.UNKNOWN)
-    findings.append(
-        Finding(
-            "R3_pdays与上次结果冲突",
-            _count(conflict),
-            False,
-            "距上次联系天数≠-1 但 上次营销结果=未知；保留原值，不修改",
-        )
-    )
 
-    # R4 月份必须能识别，否则时间轴无法重建
-    month_ok = df[S.MONTH].map(S.MONTH_ORDER).notna()
-    findings.append(Finding("R4_月份无法识别", _count(~month_ok), True, "必须是中文一月~十二月"))
+# R3 口径冲突：联系过却没有上次结果。业务上可能（上次是别的活动），保留原值、只记账
+@R.rule(
+    "R3_pdays与上次结果冲突",
+    "pdays 与上次结果冲突",
+    fatal=False,
+    note="距上次联系天数≠-1 但 上次营销结果=未知；保留原值，不修改",
+)
+def _pdays_conflict(df: pd.DataFrame) -> pd.Series:
+    pdays = pd.to_numeric(df[S.PDAYS], errors="coerce")
+    return (pdays != S.PDAYS_SENTINEL) & (df[S.POUTCOME] == S.UNKNOWN)
 
-    # R5 日号必须 1~31
+
+# R4 月份必须能识别，否则时间轴无法重建
+@R.rule("R4_月份无法识别", "月份无法识别", fatal=True, note="必须是中文一月~十二月")
+def _bad_month(df: pd.DataFrame) -> pd.Series:
+    return df[S.MONTH].map(S.MONTH_ORDER).isna()
+
+
+# R5 日号必须 1~31
+@R.rule("R5_日号越界", "日号越界", fatal=True, note=f"{S.DAY} 必须落在 1~31")
+def _bad_day(df: pd.DataFrame) -> pd.Series:
     day = pd.to_numeric(df[S.DAY], errors="coerce")
-    bad_day = ~day.between(1, 31)
-    findings.append(Finding("R5_日号越界", _count(bad_day), True, f"{S.DAY} 必须落在 1~31"))
+    return ~day.between(1, 31)
 
-    # R6 原始 17 列不允许真空值（「未知」是取值，不是空值）
+
+# R6 原始 17 列不允许真空值（「未知」是取值，不是空值）
+@R.rule("R6_真空值", "真空值", fatal=True, note="「未知」是取值；真空值说明上游有问题")
+def _null_rows(df: pd.DataFrame) -> pd.Series:
     raw_cols = [c for c in df.columns if c in _RAW_COLUMNS]
-    null_rows = df[raw_cols].isna().any(axis=1)
-    findings.append(
-        Finding("R6_真空值", _count(null_rows), True, "「未知」是取值；真空值说明上游有问题")
-    )
+    return df[raw_cols].isna().any(axis=1)
 
-    # R7 通话时长只做质量检查（该列禁用，但脏数据要能被发现）
-    if S.DURATION in df.columns:
-        dur = pd.to_numeric(df[S.DURATION], errors="coerce")
-        findings.append(
-            Finding(
-                "R7_通话时长为负",
-                _count(dur < 0),
-                True,
-                "该列禁用，但仍须保证数据本身合法",
-            )
-        )
 
+# R7 通话时长只做质量检查（该列禁用，但脏数据要能被发现）
+@R.rule("R7_通话时长为负", "通话时长为负", fatal=True, note="该列禁用，但仍须保证数据本身合法")
+def _negative_duration(df: pd.DataFrame) -> pd.Series:
+    if S.DURATION not in df.columns:
+        return pd.Series(False, index=df.index)
+    dur = pd.to_numeric(df[S.DURATION], errors="coerce")
+    return dur < 0
+
+
+# ---------------------------------------------------------------- 跑与报
+
+
+def run_checks(df: pd.DataFrame) -> list[Finding]:
+    """按注册表顺序跑全部规则。顺序固定（按规则编码），台账才可比。"""
+    findings: list[Finding] = []
+    for spec in R.all_rules():
+        findings.append(Finding(spec.code, _count(spec.mask(df)), spec.fatal, spec.note))
     return findings
 
 
