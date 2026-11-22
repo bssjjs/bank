@@ -7,8 +7,8 @@
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**口径层 + 冻结层**。`src/bank/schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`tests/` 有 53 项单测。分析结论在同目录 `notebooks/`。
-- 模型、服务、前端、特征目录、注册表、质量门 `scripts/ci.py`**都还不存在**，别假设它们存在，也别在文档里引用它们。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/training`（`bank_training`）与 `packages/api`（`bank_api`）已建但**还没有业务代码**。`scripts/ci.py` 是五道门的质量门。`tests/` 有 88 项测试（unit + architecture）。分析结论在 `notebooks/`。
+- 模型、训练脚本、服务、前端、注册表**都还不存在**，别假设它们存在，也别在文档里引用它们。特征目录（`configs/features.yaml` + `catalog.py`）和质量门（`scripts/ci.py`）已经存在。
 
 ### 五个人的角色
 
@@ -24,20 +24,22 @@
 
 ## 二、怎么算完成
 
-现在能跑的四条命令（不要自创第五条）：
+现在能跑的命令（不要自创第六条）：
 
 ```powershell
 .venv\Scripts\python.exe -m bank.build
 .venv\Scripts\python.exe -m bank.profile
 .venv\Scripts\python.exe -m bank.freeze        # 加 --check 只校验不重建
-.venv\Scripts\python.exe -m unittest discover -s tests -v
+.venv\Scripts\python.exe -m pytest tests -q
+.venv\Scripts\python.exe scripts\ci.py
 ```
 
 - `bank.build` 必须打印「口径层构建完成」，行数 45,211、正例 5,289，并写出 `data/model_dataset.parquet` 与 `data/feature_spec.json`。
 - `bank.profile` 是文档数字的唯一出处：`docs/data_card.md`、`docs/spec.md` 里的行数、正例率、漂移表、口径冲突行数、泄漏 AUC 全部来自它。改数据或改口径后，先跑它，再改文档。
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- 单测 53 项必须全过（`Ran 53 tests OK`）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）。
+- `pytest tests` 必须全过（88 项）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）、13 项特征目录（合法性 + 与 schema 对账）、13 项配置（拼错键/重复键/越界值/名额公式）、9 项架构（依赖方向、包布局、质量门存在）。
+- `scripts/ci.py` 是交付前最后一关：五道门（ruff check、ruff format --check、mypy、lint-imports、pytest）必须全绿，末行打印「质量门：全绿」。任何一道红都不算完成。
 - 交付时贴命令与输出的最后几行原文；没跑过的命令不写进文档，没跑出来的数字不进报告。
 
 ## 三、绝对不要做
@@ -48,20 +50,20 @@
 4. 不改原始库 `data/bank-marketing.db`；不手改 `model_dataset.parquet` 与 `feature_spec.json`，它们只能由 `bank.build` 生成。
 5. 不用验证集/封存集调参、选模型、定名额。报任何指标都要写清：哪个集合、多少人、名额几个人。
 6. 不降低既有门槛：不改、不删、不跳过 `tests/` 里的断言；不写 `# type: ignore`、`# noqa` 让检查闭嘴。觉得断言有问题，停下来说明。
-7. 不把口径常量复制到 notebook 或临时脚本里；唯一出处是 `src/bank/schema.py`，别处只引用。
+7. 不把口径常量复制到 notebook 或临时脚本里；唯一出处是 `packages/core/src/bank/schema.py`，别处只引用。
 8. 不凭记忆写数字。报告里每个指标都要有本次命令输出对应——「报告数字与命令输出对不上」是任务书的一票否决项。
 
 ## 四、怎么干活
 
-1. 开工先读：本文件 → `notebooks/数据口径说明.md` → `tests/test_schema.py` → `data/feature_spec.json`。
+1. 开工先读：本文件 → `notebooks/数据口径说明.md` → `configs/features.yaml` → `packages/core/src/bank/schema.py` → `tests/unit/test_freeze.py`。
 2. 先给计划再动手：要新建/修改哪些文件、每个公开函数的签名、打算怎么验证。**等负责人确认**。
-3. 改完跑第二节四条命令，贴输出；不顺带重构无关代码。
+3. 改完跑第二节的命令（至少 `pytest tests` + `scripts/ci.py`），贴输出；不顺带重构无关代码。
 4. 同一项检查修三轮还红就停下报告：贴失败输出和试过的办法。要改范围以外的文件，也先停。
 5. 交付顺序：改了哪些文件 → `git status --short` 与 `git diff --stat` 原文 → 命令输出的末尾几行。
 
 ## 五、仓库约定
 
-### 目录（任务书要求，骨架已建好，代码还没迁进来）
+### 目录（任务书要求，代码已在 `packages/core`）
 
 ```
 packages/core|training|api   三包：core 谁都不依赖，training 与 api 互不依赖
@@ -76,13 +78,13 @@ docs/adr/                    决策记录，0001 起编号，一份一个决定
 docs/modules/                模块卡：目标 / 验收 / 不做
 ```
 
-- 现有代码在 `src/bank`（`bank.pth` 指向 `src`，导入名 `bank`）。迁到 `packages/` 是 M8 的事，迁之前先写 ADR；**不要两个位置各放一份规则**。
+- 代码只在 `packages/core/src/bank`（导入名仍是 `bank`，由 uv workspace 以 editable 装进 `.venv`）。`packages/training` 与 `packages/api` 的导入名分别是 `bank_training`、`bank_api`。**不要在别处再放一份规则或另起一个 `src/`**；迁移的取舍写在 `docs/adr/0004-三包结构与依赖方向.md`。
 
 ### Git 边界（`.gitignore` 已按此设置）
 
 - 不进 Git：`data/raw/`、`data/processed/`、`data/*.db`、`data/*.parquet`、`models/`、`mlflow.db`、`mlruns/`、`.venv/`、工具缓存。
 - 进 Git：代码、`configs/`、`docs/`、`tests/`、`data/frozen/`（冻结集 + `FROZEN.json`）、`data/feature_spec.json`。
-- 依赖锁 `uv.lock` 进 Git。加依赖要用 uv（`.venv` 里没 pip，uv 目前不在 PATH，加之前先确认）。
+- 依赖锁 `uv.lock` 进 Git。加依赖用 `uv add` / `uv lock`，命令要带 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`（沙箱挡了默认缓存目录，不带会报拒绝访问）。uv 在 `.venv\Scripts\uv.exe`。
 
 ### 命名与语言
 
@@ -95,9 +97,10 @@ docs/modules/                模块卡：目标 / 验收 / 不做
 
 ## 六、当前进度与已知缺口
 
-- 已完成 M1（口径与问题定义）：`docs/problem.md`（一句话定义、成功标准、非目标）、`docs/spec.md`（17 列逐列判定、派生列、禁用列、切分与名额口径、E1–E5 对照实验、清洗规则台账）、`docs/data_card.md`（来源许可、时间轴证据、漂移表、泄漏证据）、`docs/pitfalls.md`（9 条）、`docs/adr/0001`（数据集与行数口径）、`docs/adr/0002`（时间切分与窗口）、`src/bank/timeaxis.py`、`src/bank/profile.py`、`tests/test_timeaxis.py`（14 项）。
-- 已完成 M2（数据管道与冻结）：`configs/base.yaml`（唯一口径来源）+ `src/bank/config.py` 强校验（拼错键/重复键/越界值直接报错）、`raw.py`（`mode=ro` + `query_only` 唯一只读入口）、`clean.py`（R1–R7 清洗台账，不删行）、`split.py`（时间切分与缓冲）、`repro.py`（源/配置/内容三级指纹）、`freeze.py`（`python -m bank.freeze` 产出 `data/frozen/` 四件套 + `--check`）、`docs/adr/0003`（内容指纹与冻结）、`tests/test_freeze.py`（25 项）。单测合计 53 项。
-- 未开始：M3 训练与评估、M4 模型包、M5 服务、M6 前端、M7 漂移、M8 底座（三包迁移/features.yaml/注册表/ci.py）、M9 文档。
+- 已完成 M1（口径与问题定义）：`docs/problem.md`（一句话定义、成功标准、非目标）、`docs/spec.md`（17 列逐列判定、派生列、禁用列、切分与名额口径、E1–E5 对照实验、清洗规则台账）、`docs/data_card.md`（来源许可、时间轴证据、漂移表、泄漏证据）、`docs/pitfalls.md`（9 条）、`docs/adr/0001`（数据集与行数口径）、`docs/adr/0002`（时间切分与窗口）、`packages/core/src/bank/timeaxis.py`、`packages/core/src/bank/profile.py`、`tests/unit/test_timeaxis.py`（14 项）。
+- 已完成 M2（数据管道与冻结）：`configs/base.yaml`（唯一口径来源）+ `packages/core/src/bank/config.py` 强校验（拼错键/重复键/越界值直接报错）、`raw.py`（`mode=ro` + `query_only` 唯一只读入口）、`clean.py`（R1–R7 清洗台账，不删行）、`split.py`（时间切分与缓冲）、`repro.py`（源/配置/内容三级指纹）、`freeze.py`（`python -m bank.freeze` 产出 `data/frozen/` 四件套 + `--check`）、`docs/adr/0003`（内容指纹与冻结）、`tests/unit/test_freeze.py`（25 项）。单测合计 53 项。
+- 已完成 M8 的工程底座（不含注册表）：uv workspace 三包 + 依赖方向（`.importlinter` 两条契约 + 架构测试）、`configs/features.yaml` 33 个字段（含 8 个禁用列与禁用理由）+ `catalog.py` 与 `schema.py` 对账、`yamlkit.py` 严格 YAML、`scripts/ci.py` 五道门、测试目录按 `unit/contract/architecture/service` 分好。
+- 未开始：M3 训练与评估、M4 模型包、M5 服务、M6 前端、M7 漂移、M8 的注册表、M9 文档。
 - 已定的口径（ADR 0002 为准，别再问）：窗口 **A = 2008-11-01~2010-11-17**（21,093 行 / 4,109 正例）；训练 `<2009-10-01`（17,537 / 2,327 / 13.27%）；验证 `≥2009-10-01`（3,556 / 1,782 / 50.11%）；名额 **356** 人；主口径名额制、阈值 0.5 只作对照；主模型逻辑回归、特征集 A、切分按时间、不打乱不分层、缓冲 0 天。
 - 两个会反复踩的事实，先记住：
   1. **行序就是时间序**：30 个月块从 2008-05 走到 2010-11，月份只回绕过两次（跨年），块内日号从不回退；重建日期 2008-05-05–2010-11-17、561 个日期、全局单调。`notebooks/数据口径说明.md` §2.5 写的「没有年份只能随机切分」是错的，改那份文档时按这个结论改。重建日期**必须先把握手序号（`rowid`）落进数据集**，不能依赖 `SELECT *` 的返回顺序。

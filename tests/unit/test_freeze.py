@@ -13,7 +13,6 @@ import unittest
 from datetime import date
 
 import pandas as pd
-
 from bank import clean, freeze, repro, split
 from bank import config as C
 from bank import schema as S

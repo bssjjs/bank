@@ -13,8 +13,21 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+
 # ---------------------------------------------------------------- 路径与表
-ROOT = Path(__file__).resolve().parents[2]
+def _find_root() -> Path:
+    """往上找仓库根：认 `configs/base.yaml`，不数目录层级。
+
+    原因：代码从 `src/bank` 搬进 `packages/core/src/bank` 后，`parents[N]` 的
+    N 会变；用标记文件找根，搬家、装成 wheel、在别处 checkout 都不会错。
+    """
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "configs" / "base.yaml").is_file():
+            return parent
+    raise RuntimeError("找不到仓库根（缺 configs/base.yaml），拒绝猜路径")
+
+
+ROOT = _find_root()
 DB_PATH = ROOT / "data" / "bank-marketing.db"
 RAW_TABLE = "银行营销数据"
 SEED = 42

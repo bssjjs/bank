@@ -10,7 +10,6 @@ import unittest
 
 import numpy as np
 import pandas as pd
-
 from bank import dataset as D
 from bank import schema as S
 

@@ -1,0 +1,22 @@
+[project]
+name = "bank-api"
+version = "0.1.0"
+description = "只读 ModelBundle 的推理服务（不导入训练代码）"
+requires-python = ">=3.12"
+dependencies = [
+    "bank-core",
+    "fastapi>=0.165.0",
+    "pydantic>=2.14.4",
+    "uvicorn>=0.54.0",
+]
+
+[tool.uv.sources]
+bank-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "bank_api"
+module-root = "src"

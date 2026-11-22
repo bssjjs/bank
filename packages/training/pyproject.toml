@@ -1,0 +1,22 @@
+[project]
+name = "bank-training"
+version = "0.1.0"
+description = "两条基线、Pipeline、名额决策、指标、mlflow 运行记录、模型包导出"
+requires-python = ">=3.12"
+dependencies = [
+    "bank-core",
+    "joblib>=1.6.0",
+    "mlflow>=3.18.0",
+    "scikit-learn>=1.9.1",
+]
+
+[tool.uv.sources]
+bank-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "bank_training"
+module-root = "src"

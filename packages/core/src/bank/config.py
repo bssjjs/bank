@@ -10,13 +10,13 @@ from __future__ import annotations
 import math
 from datetime import date
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from bank import repro
 from bank import schema as S
+from bank.yamlkit import YamlError, load_mapping
 
 CONFIG_PATH = S.ROOT / "configs" / "base.yaml"
 
@@ -93,29 +93,11 @@ class Config(_Strict):
         return self
 
 
-class _UniqueKeyLoader(yaml.SafeLoader):
-    """YAML 默认允许重复键、后者覆盖前者；口径文件里重复键一定是复制粘贴出错。"""
-
-    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict:
-        self.flatten_mapping(node)
-        seen: set[Any] = set()
-        for key_node, _ in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if key in seen:
-                raise ConfigError(f"配置键重复：{key!r}")
-            seen.add(key)
-        return super().construct_mapping(node, deep=deep)
-
-
 def load_config(path: Path = CONFIG_PATH) -> Config:
-    if not path.exists():
-        raise ConfigError(f"找不到配置文件：{path}")
     try:
-        raw = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
-    except yaml.YAMLError as exc:  # 缩进/语法错
-        raise ConfigError(f"配置文件不是合法 YAML：{exc}") from exc
-    if not isinstance(raw, dict):
-        raise ConfigError("配置文件顶层必须是映射（key: value）")
+        raw = load_mapping(path, what="配置")
+    except YamlError as exc:
+        raise ConfigError(str(exc)) from exc
 
     try:
         return Config.model_validate(raw)

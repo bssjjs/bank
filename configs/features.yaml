@@ -1,0 +1,71 @@
+schema_version: 1
+# 字段目录：训练、数据检查、接口、页面都从这里读，别处不许再写一份类型/范围/取值。
+# 规则：
+#   - 原始列（derived: false）保留中文原名，这是跟业务方的契约；派生列是英文别名或中文派生名。
+#   - forbidden: true 的列永远不进特征，入口处直接拒绝；必须写 reason，答辩要能一句话解释。
+#   - 每个 categorical 必须列全取值：接口校验用白名单，页面用它渲染下拉框。
+fields:
+  # ---------------- 原始 17 列 ----------------
+  - {name: 年龄, type: numeric, display: 年龄, unit: 岁, min: 18, max: 95, derived: false, forbidden: false}
+  - name: 职业
+    type: categorical
+    display: 职业
+    derived: false
+    forbidden: false
+    categories: [行政人员, 蓝领工人, 技术人员, 服务业, 管理人员, 退休, 企业家, 学生, 家政, 失业, 自由职业, 未知]
+  - {name: 婚姻状态, type: categorical, display: 婚姻状态, derived: false, forbidden: false, categories: [已婚, 未婚, 离婚]}
+  - {name: 教育程度, type: categorical, display: 教育程度, derived: false, forbidden: false, categories: [小学, 中学, 高等教育, 未知]}
+  - {name: 是否信贷违约, type: binary, display: 是否有信贷违约, derived: false, forbidden: false, categories: [是, 否]}
+  - {name: 账户余额, type: numeric, display: 账户余额, unit: 元, min: -8019, max: 102127, derived: false, forbidden: false}
+  - {name: 住房贷款, type: binary, display: 是否有住房贷款, derived: false, forbidden: false, categories: [是, 否]}
+  - {name: 个人贷款, type: binary, display: 是否有个人贷款, derived: false, forbidden: false, categories: [是, 否]}
+  - {name: 联系方式, type: categorical, display: 联系方式, derived: false, forbidden: false, categories: [手机, 固话, 未知]}
+  - {name: 联系日期, type: time, display: 联系日（几号）, min: 1, max: 31, derived: false, forbidden: false}
+  - {name: 联系月份, type: categorical, display: 联系月份, role: source, derived: false, forbidden: false, categories: [一月, 二月, 三月, 四月, 五月, 六月, 七月, 八月, 九月, 十月, 十一月, 十二月]}
+  - name: 通话时长
+    type: numeric
+    display: 通话时长
+    unit: 秒
+    min: 0
+    max: 4918
+    derived: false
+    forbidden: true
+    reason: 结果泄漏——只有通话结束才知道；单变量 AUC 0.8076，比很多完整模型都高
+  - {name: 本次联系次数, type: numeric, display: 本次活动累计联系次数, min: 1, max: 63, derived: false, forbidden: false}
+  - name: 距上次联系天数
+    type: numeric
+    display: 距上次联系天数（-1 表示从未联系）
+    min: -1
+    max: 871
+    derived: false
+    forbidden: true
+    reason: -1 是「从未联系」哨兵（占 81.74%），原列当数值入模方向是错的；只用派生三列
+  - {name: 历史联系次数, type: numeric, display: 本次营销活动之前的联系次数, min: 0, max: 275, derived: false, forbidden: false}
+  - {name: 上次营销结果, type: categorical, display: 上一次营销活动结果, derived: false, forbidden: false, categories: [成功, 失败, 其他, 未知]}
+  - name: 是否认购
+    type: binary
+    display: 是否认购定期存款（标签）
+    categories: [是, 否]
+    derived: false
+    forbidden: true
+    reason: 标签本身，只在训练时读
+
+  # ---------------- 时间轴（M2 重建） ----------------
+  - {name: 序号, type: id, display: 原始记录序号, derived: true, forbidden: true, reason: 只用于确定性排序与重建时间轴，不是客户特征}
+  - {name: 年份, type: numeric, display: 年份（按行序重建）, min: 2008, max: 2010, derived: true, forbidden: true, reason: 重建得到的时间信息，切分用，不进特征}
+  - {name: 月份序_重建, type: numeric, display: 月份（按行序重建，1-12）, min: 1, max: 12, derived: true, forbidden: true, reason: 切分用，不进特征}
+  - {name: 重建日期, type: date, display: 联系日期（重建）, derived: true, forbidden: true, reason: 切分用，不进特征}
+
+  # ---------------- 标签与派生特征 ----------------
+  - {name: label, type: binary, display: 是否认购（0/1）, categories: [0, 1], derived: true, forbidden: true, reason: 标签的数值形式}
+  - {name: 是否被联系过, type: binary, display: 之前是否被联系过, derived: true, forbidden: false, categories: [0, 1]}
+  - {name: 距上次联系天数_log, type: numeric, display: 距上次联系天数的对数, min: 0.0, max: 6.18, derived: true, forbidden: false}
+  - {name: 距上次联系天数档, type: ordinal, display: 距上次联系天数（分档）, derived: true, forbidden: false, categories: [未联系, "(0,30]", "(30,90]", "(90,180]", "(180,365]", "365+"]}
+  - {name: 信息完整度, type: numeric, display: 三个「未知」字段里已知的个数, min: 0, max: 3, derived: true, forbidden: false}
+  - {name: 教育程度序, type: ordinal, display: 教育程度（有序）, categories: [1, 2, 3], derived: true, forbidden: false}
+  - {name: 教育程度_未知, type: binary, display: 教育程度是否未知, derived: true, forbidden: false, categories: [0, 1]}
+  - {name: 月份序, type: numeric, display: 月份（1-12）, min: 1, max: 12, derived: true, forbidden: false}
+  - {name: 月份_sin, type: numeric, display: 月份正弦, min: -1.0, max: 1.0, derived: true, forbidden: false}
+  - {name: 月份_cos, type: numeric, display: 月份余弦, min: -1.0, max: 1.0, derived: true, forbidden: false}
+  - {name: 日期_sin, type: numeric, display: 日号正弦, min: -1.0, max: 1.0, derived: true, forbidden: false}
+  - {name: 日期_cos, type: numeric, display: 日号余弦, min: -1.0, max: 1.0, derived: true, forbidden: false}
