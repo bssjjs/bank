@@ -81,11 +81,28 @@ def build_time_axis(
         format="%Y-%m-%d",
     )
     out = pd.DataFrame(
-        {YEAR: years.astype("int16"), MONTH_REBUILT: month_of_year.astype("int8"), DATE: stamps}
+        {
+            YEAR: years.astype("int16"),
+            MONTH_REBUILT: month_of_year.astype("int8"),
+            DATE: stamps,
+        }
     )
     if not out[DATE].is_monotonic_increasing:
         raise ValueError("重建日期不是单调不减的，时间轴假设被推翻")
     return out
+
+
+def with_time_axis(
+    df: pd.DataFrame, start_year: int = START_YEAR, start_month: int = START_MONTH
+) -> pd.DataFrame:
+    """给带 ``序号`` 的原始表拼上三列时间轴（列顺序不变，新列追加在末尾）。
+
+    这是冻结、画像、训练三条路径共用的唯一入口：时间轴只在这里算一次。
+    """
+    axis = build_time_axis(
+        S.month_to_num(df[S.MONTH]), df[S.DAY].to_numpy(), start_year, start_month
+    )
+    return pd.concat([df.reset_index(drop=True), axis], axis=1)
 
 
 def month_key(index_or_series) -> pd.Series:

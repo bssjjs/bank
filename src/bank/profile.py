@@ -7,28 +7,22 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
+from bank import raw as rawdb
 from bank import schema as S
 from bank import timeaxis as T
+from bank.timeaxis import with_time_axis
 
 OUT_PATH = S.ROOT / "data" / "processed" / "profile_raw.json"
 
 
 def load_ordered(db: Path = S.DB_PATH, table: str = S.RAW_TABLE) -> pd.DataFrame:
     """带行号读原始表。行号是时间序的载体，必须落进数据。"""
-    with sqlite3.connect(db) as conn:
-        return pd.read_sql(f'SELECT rowid AS "{T.SEQUENCE}", * FROM "{table}"', conn)
-
-
-def with_time_axis(df: pd.DataFrame) -> pd.DataFrame:
-    """补 年份 / 月份序_重建 / 重建日期 三列（不改变行序）。"""
-    axis = T.build_time_axis(S.month_to_num(df[S.MONTH]).to_numpy(), df[S.DAY].to_numpy())
-    return pd.concat([df.reset_index(drop=True), axis], axis=1)
+    return rawdb.read_ordered(table, db)
 
 
 def _half_year(dates: pd.Series) -> pd.Series:
@@ -50,13 +44,11 @@ def profile(df: pd.DataFrame) -> dict:
     drift = {}
     for key, part in df.assign(_hy=hy, _label=label).groupby("_hy", sort=True):
         drift[str(key)] = {
-            "rows": int(len(part)),
+            "rows": len(part),
             "positives": int(part["_label"].sum()),
             "pos_rate": round(float(part["_label"].mean()), 4),
             "campaign_mean": round(float(part[S.CAMPAIGN].mean()), 3),
-            "never_contacted_share": round(
-                float((part[S.PDAYS] == S.PDAYS_SENTINEL).mean()), 4
-            ),
+            "never_contacted_share": round(float((part[S.PDAYS] == S.PDAYS_SENTINEL).mean()), 4),
             "poutcome_known_share": round(float((part[S.POUTCOME] != S.UNKNOWN).mean()), 4),
         }
 
@@ -131,18 +123,31 @@ def _slice(dates: pd.Series, start: str, end: str | None, label: pd.Series) -> d
 def summarize(facts: dict) -> list[str]:
     """人要读的几行，顺序与数据卡的叙述顺序一致。"""
     src, lab, tm = facts["source"], facts["label"], facts["time"]
-    lines = [
-        f"原始表：{src['table']}（{src['db']}，{src['db_bytes'] / 1_048_576:.1f} MiB）",
+    head = (
         f"行数 {src['rows']:,}，列数 {src['cols']}，正例 {lab['positives']:,}"
-        f"（{lab['pos_rate']:.2%}）",
+        f"（{lab['pos_rate']:.2%}）"
+    )
+    axis = (
         f"重建时间轴：{tm['date_min']} → {tm['date_max']}，"
         f"{tm['n_distinct_dates']} 个日期、{tm['n_month_blocks']} 个月块，"
-        f"缺失月份 {tm['missing_months']}，单调={tm['monotonic']}",
+        f"缺失月份 {tm['missing_months']}，单调={tm['monotonic']}"
+    )
+    pdays = (
         f"从未被联系过 {facts['pdays']['never_contacted']:,} 行，"
         f"被联系过 {facts['pdays']['contacted']:,} 行，"
-        f"pdays≠-1 但 poutcome=未知 {facts['pdays']['conflict_pdays_set_but_poutcome_unknown']} 行",
+        f"pdays≠-1 但 poutcome=未知 "
+        f"{facts['pdays']['conflict_pdays_set_but_poutcome_unknown']} 行"
+    )
+    leak = (
         f"通话时长单变量 AUC = {facts['leak_duration']['auc_univariate']}"
-        f"（均值 {facts['leak_duration']['mean']}s，P95 {facts['leak_duration']['p95']}s）",
+        f"（均值 {facts['leak_duration']['mean']}s，P95 {facts['leak_duration']['p95']}s）"
+    )
+    lines = [
+        f"原始表：{src['table']}（{src['db']}，{src['db_bytes'] / 1_048_576:.1f} MiB）",
+        head,
+        axis,
+        pdays,
+        leak,
         "",
         "半年切片：",
     ]
@@ -157,9 +162,7 @@ def summarize(facts: dict) -> list[str]:
     lines.append("候选窗口与切分：")
     for name, v in {**facts["windows"], **facts["splits"]}.items():
         rate = "—" if v["pos_rate"] is None else f"{v['pos_rate']:.2%}"
-        lines.append(
-            f"  {name:<34} 行 {v['rows']:>6,}  正例 {v['positives']:>5,}  正例率 {rate}"
-        )
+        lines.append(f"  {name:<34} 行 {v['rows']:>6,}  正例 {v['positives']:>5,}  正例率 {rate}")
     return lines
 
 

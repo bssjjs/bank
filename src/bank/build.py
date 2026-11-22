@@ -14,13 +14,18 @@ from bank import schema as S
 
 
 def _fmt(facts: dict) -> str:
+    added = facts["n_cols_out"] - facts["n_cols_raw"]
+    dataset_line = f"输出数据集      {facts['n_cols_out']} 列（新增 {added} 列，未删原始列）"
+    target_line = (
+        f"目标            {S.TARGET}：正例 {facts['n_positive']:,} 条，占比 {facts['pos_rate']:.2%}"
+    )
     lines = [
         "",
         "口径层构建完成",
         "-" * 46,
         f"原始表          {S.RAW_TABLE}（{facts['n_cols_raw']} 列 / {facts['n_rows']:,} 行）",
-        f"输出数据集      {facts['n_cols_out']} 列（新增 {facts['n_cols_out'] - facts['n_cols_raw']} 列，未删原始列）",
-        f"目标            {S.TARGET}：正例 {facts['n_positive']:,} 条，占比 {facts['pos_rate']:.2%}",
+        dataset_line,
+        target_line,
         f"是否被联系过    {facts['n_contacted']:,} 条为 1，{facts['n_never_contacted']:,} 条为 0",
         f"教育程度未知    {facts['n_edu_unknown']:,} 条（走哑变量，不占顺序位）",
         "",

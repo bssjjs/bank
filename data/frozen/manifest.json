@@ -1,0 +1,160 @@
+{
+  "contract": "manifest.v1",
+  "builder": "bank.freeze/1",
+  "config": {
+    "path": "configs/base.yaml",
+    "sha256": "76d9cb883bfb994962de05e19b9d553076baa805058483b56f004f0431335822"
+  },
+  "source": {
+    "path": "data/bank-marketing.db",
+    "table": "银行营销数据",
+    "sha256": "297201c8745a471cd11237a822b039d12a299e2eedc579c70f00adcb74fe387a",
+    "bytes": 4014080
+  },
+  "raw": {
+    "rows": 45211,
+    "cols": 17,
+    "positives": 5289,
+    "pos_rate": 0.117,
+    "sequence_column": "序号",
+    "columns": [
+      "年龄",
+      "职业",
+      "婚姻状态",
+      "教育程度",
+      "是否信贷违约",
+      "账户余额",
+      "住房贷款",
+      "个人贷款",
+      "联系方式",
+      "联系日期",
+      "联系月份",
+      "通话时长",
+      "本次联系次数",
+      "距上次联系天数",
+      "历史联系次数",
+      "上次营销结果",
+      "是否认购"
+    ]
+  },
+  "window": {
+    "rows": 21093,
+    "positives": 4109,
+    "pos_rate": 0.1948,
+    "date_min": "2008-11-04",
+    "date_max": "2010-11-17",
+    "start": "2008-11-01",
+    "end": "2010-11-17",
+    "cut": "2009-10-01",
+    "buffer_days": 0,
+    "feature_set": "A"
+  },
+  "tables": {
+    "train": {
+      "rows": 17537,
+      "positives": 2327,
+      "pos_rate": 0.1327,
+      "date_min": "2008-11-04",
+      "date_max": "2009-09-30",
+      "path": "data/frozen/train.parquet",
+      "content_sha256": "03832a965af755657b3f36a0fcd93438c1f00c206fd31a586f0f71d93fea5ff5"
+    },
+    "valid": {
+      "rows": 3556,
+      "positives": 1782,
+      "pos_rate": 0.5011,
+      "date_min": "2009-10-01",
+      "date_max": "2010-11-17",
+      "path": "data/frozen/valid.parquet",
+      "content_sha256": "d680004e613fdb0ca405a4a2c2d0234b954152255ac46f34a815250f9918fbd0"
+    }
+  },
+  "capacity": {
+    "rows": 21093,
+    "positives": 4109,
+    "pos_rate": 0.1948,
+    "n_features": 24,
+    "quota_n": 356,
+    "quota_frac": 0.1
+  },
+  "cleaning": [
+    {
+      "rule": "R1_标签取值",
+      "rows": 0,
+      "fatal": true,
+      "note": "是否认购 只能是 是/否"
+    },
+    {
+      "rule": "R2_pdays非法负值",
+      "rows": 0,
+      "fatal": true,
+      "note": "-1 之外不允许负数"
+    },
+    {
+      "rule": "R3_pdays与上次结果冲突",
+      "rows": 5,
+      "fatal": false,
+      "note": "距上次联系天数≠-1 但 上次营销结果=未知；保留原值，不修改"
+    },
+    {
+      "rule": "R4_月份无法识别",
+      "rows": 0,
+      "fatal": true,
+      "note": "必须是中文一月~十二月"
+    },
+    {
+      "rule": "R5_日号越界",
+      "rows": 0,
+      "fatal": true,
+      "note": "联系日期 必须落在 1~31"
+    },
+    {
+      "rule": "R6_真空值",
+      "rows": 0,
+      "fatal": true,
+      "note": "「未知」是取值；真空值说明上游有问题"
+    },
+    {
+      "rule": "R7_通话时长为负",
+      "rows": 0,
+      "fatal": true,
+      "note": "该列禁用，但仍须保证数据本身合法"
+    }
+  ],
+  "columns": [
+    "序号",
+    "年龄",
+    "职业",
+    "婚姻状态",
+    "教育程度",
+    "是否信贷违约",
+    "账户余额",
+    "住房贷款",
+    "个人贷款",
+    "联系方式",
+    "联系日期",
+    "联系月份",
+    "通话时长",
+    "本次联系次数",
+    "距上次联系天数",
+    "历史联系次数",
+    "上次营销结果",
+    "是否认购",
+    "年份",
+    "月份序_重建",
+    "重建日期",
+    "label",
+    "是否被联系过",
+    "距上次联系天数_log",
+    "距上次联系天数档",
+    "信息完整度",
+    "教育程度序",
+    "教育程度_未知",
+    "月份序",
+    "月份_sin",
+    "月份_cos",
+    "日期_sin",
+    "日期_cos"
+  ],
+  "fingerprint_rule": "canonical csv: lineterminator=LF, float=%.10g, na='' → sha256"
+}

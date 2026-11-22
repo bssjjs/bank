@@ -1,0 +1,33 @@
+# 口径数字的唯一出处：M2 起所有代码从这里读，不再在代码里各写一份。
+# 改这个文件必须同时改 docs/adr/ 里的对应决策，否则口径与文档脱节。
+schema_version: 1
+seed: 20261122
+
+data:
+  raw_db: data/bank-marketing.db
+  raw_table: 银行营销数据
+  frozen_dir: data/frozen
+
+# 建模窗口：ADR 0002。起点跳过 2008-05~08 的"全量外呼 + 三列全未知"阶段。
+window:
+  start: 2008-11-01
+  end: 2010-11-17
+
+# 时间切分：训练 < cut，验证 >= cut。缓冲期 0 天（标签通话结束即得）。
+split:
+  cut: 2009-10-01
+  buffer_days: 0
+
+# 名额制：名额人数 = ceil(验证集行数 × frac)。356 = ceil(3,556 × 0.10)。
+quota:
+  frac: 0.10
+
+features:
+  set: A
+
+target:
+  column: 是否认购
+  positive: 是
+  negative: 否
+  # 标签等待窗口：通话结束即知结果，不需要等待。
+  window_days: 0

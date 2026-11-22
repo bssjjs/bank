@@ -33,9 +33,7 @@ class BuildTimeAxisTest(unittest.TestCase):
     def test_missing_month_gap_is_forward_jump(self) -> None:
         # 2008-09 整月缺失：08 → 10 是前进两个月，不是回退。
         out = T.build_time_axis(np.array([8, 10]), np.array([30, 1]), start_month=8)
-        self.assertEqual(
-            list(out[T.DATE].dt.strftime("%Y-%m-%d")), ["2008-08-30", "2008-10-01"]
-        )
+        self.assertEqual(list(out[T.DATE].dt.strftime("%Y-%m-%d")), ["2008-08-30", "2008-10-01"])
 
     def test_first_month_mismatch_raises(self) -> None:
         with self.assertRaises(ValueError):

@@ -10,12 +10,11 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
+from bank import raw as rawdb
 from bank import schema as S
 
 DATASET_PATH = S.ROOT / "data" / "model_dataset.parquet"
@@ -23,9 +22,12 @@ SPEC_PATH = S.ROOT / "data" / "feature_spec.json"
 
 
 def load_raw(db: Path = S.DB_PATH, table: str = S.RAW_TABLE) -> pd.DataFrame:
-    """全量读入原始表。库只有一张表，不加筛选条件。"""
-    with sqlite3.connect(db) as conn:
-        return pd.read_sql(f'SELECT * FROM "{table}"', conn)
+    """全量读入原始表（只读连接，唯一入口在 ``raw.py``）。
+
+    注意：这条路径**不带行号**，只用于口径层构建与自检；需要时间轴的路径
+    （``freeze`` / ``profile``）必须走 ``raw.read_ordered`` 把序号读进来。
+    """
+    return rawdb.read_plain(table, db)
 
 
 def build_dataset(raw: pd.DataFrame | None = None, db: Path = S.DB_PATH) -> pd.DataFrame:
@@ -119,6 +121,16 @@ def validate(df: pd.DataFrame, raw: pd.DataFrame) -> dict:
     if df[S.MONTH_ORDINAL].between(1, 12).sum() != n:
         raise AssertionError("月份序存在 1~12 之外的值")
 
+    bucket_counts = df[S.PDAYS_BUCKET].value_counts().sort_index()
+    pdays_buckets = {
+        S.PDAYS_BUCKET_LABELS[b]: int(c)
+        for b, c in zip(
+            bucket_counts.index.to_numpy(dtype="int64"),
+            bucket_counts.to_numpy(dtype="int64"),
+            strict=True,
+        )
+    }
+
     return {
         "n_rows": n,
         "n_cols_raw": raw.shape[1],
@@ -128,10 +140,7 @@ def validate(df: pd.DataFrame, raw: pd.DataFrame) -> dict:
         "n_contacted": n_contacted,
         "n_never_contacted": n_never,
         "n_edu_unknown": int(df[S.EDU_UNKNOWN_FLAG].sum()),
-        "pdays_bucket_counts": {
-            S.PDAYS_BUCKET_LABELS[k]: int(v)
-            for k, v in df[S.PDAYS_BUCKET].value_counts().sort_index().items()
-        },
+        "pdays_bucket_counts": pdays_buckets,
     }
 
 
@@ -179,9 +188,7 @@ def build_spec(df: pd.DataFrame, facts: dict) -> dict:
             },
             "time": list(S.TIME_COLS),
         },
-        "excluded": {
-            c: S.EXCLUDE_REASON[c] for c in S.EXCLUDE_COLS
-        },
+        "excluded": {c: S.EXCLUDE_REASON[c] for c in S.EXCLUDE_COLS},
         "rules": {
             "pdays_sentinel": {
                 "value": S.PDAYS_SENTINEL,

@@ -1,0 +1,38 @@
+{
+  "contract": "frozen.v1",
+  "builder": "bank.freeze/1",
+  "source": {
+    "path": "data/bank-marketing.db",
+    "sha256": "297201c8745a471cd11237a822b039d12a299e2eedc579c70f00adcb74fe387a"
+  },
+  "config": {
+    "path": "configs/base.yaml",
+    "sha256": "76d9cb883bfb994962de05e19b9d553076baa805058483b56f004f0431335822"
+  },
+  "tables": {
+    "train": {
+      "rows": 17537,
+      "positives": 2327,
+      "content_sha256": "03832a965af755657b3f36a0fcd93438c1f00c206fd31a586f0f71d93fea5ff5"
+    },
+    "valid": {
+      "rows": 3556,
+      "positives": 1782,
+      "content_sha256": "d680004e613fdb0ca405a4a2c2d0234b954152255ac46f34a815250f9918fbd0"
+    }
+  },
+  "files": {
+    "train.parquet": {
+      "sha256": "4d24ffe820b627290ea0753202d2c0b46a34a8282b4aea5e6d3efc4ae897365a",
+      "bytes": 328185
+    },
+    "valid.parquet": {
+      "sha256": "b20d72b0c2b5c840aad3f471fdcf2136ed71d1b743a05ae02fb640449f116715",
+      "bytes": 100907
+    },
+    "manifest.json": {
+      "sha256": "33f17f23192e01fcc147e58016f572dca96f2b45564459fdea4c620c286ba9a8",
+      "bytes": 3819
+    }
+  }
+}

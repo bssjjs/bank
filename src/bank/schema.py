@@ -153,7 +153,8 @@ def pdays_log(days: pd.Series | np.ndarray) -> pd.Series:
     """
     s = _as_series(days).astype("int64")
     filled = s.where(s != PDAYS_SENTINEL, 0)
-    return np.log1p(filled).astype("float64")
+    out = np.log1p(filled.to_numpy(dtype="float64"))
+    return pd.Series(out, index=s.index, name=s.name)
 
 
 def pdays_bucket(days: pd.Series | np.ndarray) -> pd.Series:
@@ -184,8 +185,11 @@ def month_to_num(month: pd.Series) -> pd.Series:
 
 def cyclical(values: pd.Series, period: int) -> tuple[pd.Series, pd.Series]:
     """周期编码：让十二月与一月在数值上相邻，避免把周期性当线性。"""
-    rad = 2 * np.pi * values.astype("float64") / period
-    return np.sin(rad), np.cos(rad)
+    rad = 2 * np.pi * values.to_numpy(dtype="float64") / period
+    return (
+        pd.Series(np.sin(rad), index=values.index),
+        pd.Series(np.cos(rad), index=values.index),
+    )
 
 
 def unknown_flags(df: pd.DataFrame) -> pd.Series:
