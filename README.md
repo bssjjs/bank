@@ -26,7 +26,10 @@
 # 7) 导出模型包：models/serving/<版本>/ + current.json（不覆盖旧版本）
 .venv\Scripts\python.exe -m bank_training.export --version 1.0.0
 
-# 8) 测试与质量门（交付前最后一关）
+# 8) 起服务：另一窗口执行，/docs 可打开，127.0.0.1:8000
+.venv\Scripts\python.exe -m bank_api
+
+# 9) 测试与质量门（交付前最后一关）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -58,13 +61,25 @@
 | 事项 | 数字 |
 | --- | --- |
 | 版本与契约 | `1.0.0` / `model_bundle.v1` |
-| 特征与必填输入 | 21 列 / 14 个原始字段 |
+| 特征与必填输入 | 21 列 / 15 个原始字段 |
 | 等级切点 | 优先 ≥ 0.6387，备选 ≥ 0.5730（验证集分数分位数，不是概率阈值） |
 | 校验和 | `bundle.json` 与 `model.joblib` 各一份 sha256，加载时都对 |
 | 发布门禁 | 特征 ≥ 10、AP ≥ 0.50、名额内精确率 ≥ 0.60、ROC-AUC > 0.5 |
 | 回退 | 改 `models/serving/current.json` 指回旧版本，不删目录 |
 
 设计取舍见 `docs/adr/0006-模型包与发布.md`。模型包 `models/` 不进 Git，每台机器用一条命令重新导出。
+
+服务接口（`python -m bank_api` 起服务）：
+
+| 路由 | 用途 | 说明 |
+| --- | --- | --- |
+| `GET /health` | 存活 | 进程活着就 200，不读模型包 |
+| `GET /ready` | 就绪 | 模型包加载并校验通过才 200，否则 503 |
+| `GET /v1/model` | 模型信息 | 版本、指标、15 个输入字段（类型/范围/枚举），前端据此生成表单 |
+| `POST /v1/predict` | 单条预测 | 返回分数、等级、主要因素、用途提示；越界/枚举/缺字段都是 422 且 `loc` 指出字段 |
+| `POST /v1/predict/batch` | 批量预测 | 上限 100 条（`configs/api.yaml`），整批共用一个请求号 |
+
+每条预测追加一行到 `data/processed/predictions.jsonl`（`ts/request_id/model_version/score/level/control`，不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
 
 ## 目录
 

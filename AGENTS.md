@@ -7,8 +7,8 @@
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api`（`bank_api`）已建但**还没有业务代码**。`scripts/ci.py` 是五道门的质量门。`tests/` 有 116 项测试（unit + architecture）。分析结论在 `notebooks/`。
-- 服务、前端**还不存在**，别假设它们存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门。`tests/` 有 134 项测试（unit + contract + service + architecture）。分析结论在 `notebooks/`。
+- 前端**还不存在**，别假设它存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
 
 ### 五个人的角色
 
@@ -24,7 +24,7 @@
 
 ## 二、怎么算完成
 
-现在能跑的命令（不要自创第八条）：
+现在能跑的命令（不要自创第九条）：
 
 ```powershell
 .venv\Scripts\python.exe -m bank.build
@@ -33,6 +33,7 @@
 .venv\Scripts\python.exe -m bank_training.train
 .venv\Scripts\python.exe -m bank_training.experiments
 .venv\Scripts\python.exe -m bank_training.export --version 1.0.0
+.venv\Scripts\python.exe -m bank_api          # 起服务，127.0.0.1:8000
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -41,7 +42,7 @@
 - `bank.profile` 是文档数字的唯一出处：`docs/data_card.md`、`docs/spec.md` 里的行数、正例率、漂移表、口径冲突行数、泄漏 AUC 全部来自它。改数据或改口径后，先跑它，再改文档。
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（116 项）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）、13 项特征目录（合法性 + 与 schema 对账）、13 项配置（拼错键/重复键/越界值/名额公式）、9 项架构（依赖方向、包布局、质量门存在）、5 项注册表（规则登记、顺序、致命标记）、11 项训练（指标口径、规则基线分值、Pipeline 可复现、解释排序、模型配置校验）、12 项模型包（契约字段、校验和、缺列拒绝、版本不覆盖、篡改拒绝、版本指针）。
+- `pytest tests` 必须全过（134 项）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）、13 项特征目录（合法性 + 与 schema 对账）、13 项配置（拼错键/重复键/越界值/名额公式）、9 项架构（依赖方向、包布局、质量门存在）、5 项注册表（规则登记、顺序、致命标记）、11 项训练（指标口径、规则基线分值、Pipeline 可复现、解释排序、模型配置校验）、12 项模型包（契约字段、校验和、缺列拒绝、版本不覆盖、篡改拒绝、版本指针）、12 项服务（探针、字段级 422、批量上限、预测记录、无包时 503）、6 项契约（OpenAPI 的必填/范围/枚举/批量上限与模型包对账）。
 - `scripts/ci.py` 是交付前最后一关：五道门（ruff check、ruff format --check、mypy、lint-imports、pytest）必须全绿，末行打印「质量门：全绿」。任何一道红都不算完成。
 - 交付时贴命令与输出的最后几行原文；没跑过的命令不写进文档，没跑出来的数字不进报告。
 
@@ -104,8 +105,9 @@ docs/modules/                模块卡：目标 / 验收 / 不做
 - 已完成 M2（数据管道与冻结）：`configs/base.yaml`（唯一口径来源）+ `packages/core/src/bank/config.py` 强校验（拼错键/重复键/越界值直接报错）、`raw.py`（`mode=ro` + `query_only` 唯一只读入口）、`clean.py`（R1–R7 清洗台账，不删行）、`split.py`（时间切分与缓冲）、`repro.py`（源/配置/内容三级指纹）、`freeze.py`（`python -m bank.freeze` 产出 `data/frozen/` 四件套 + `--check`）、`docs/adr/0003`（内容指纹与冻结）、`tests/unit/test_freeze.py`（25 项）。单测合计 53 项。
 - 已完成 M8 的工程底座（含清洗规则注册表 `rules.py`）：uv workspace 三包 + 依赖方向（`.importlinter` 两条契约 + 架构测试）、`configs/features.yaml` 33 个字段（含 8 个禁用列与禁用理由）+ `catalog.py` 与 `schema.py` 对账、`yamlkit.py` 严格 YAML、`scripts/ci.py` 五道门、`rules.py` 清洗规则注册表（7 条规则按编码排序登记，加规则只写一个函数）、测试目录按 `unit/contract/architecture/service` 分好。
 - 已完成 M3（训练与评估）：`packages/training/src/bank_training/` 六个模块 + `train.py` / `experiments.py` 两个入口、`configs/model.yaml`（超参数单独一份，改它不动冻结指纹）、`docs/adr/0005`（模型选择，含 A/B 与 RF 证据）、`docs/model_card.md`（指标、校准、限制）、`docs/spec.md` 第 6 节 E1–E5 回填、`tests/unit/test_training.py`（11 项）。**主模型逻辑回归 + 特征集 B（21 列，去掉月份三列）+ C=1.0**，验证集 AP 0.6498 / 名额内精确 0.7416 / 召回 0.1481 / Brier 0.2852，名额 356 人里打中 264 人；规则基线 AP 0.6412 / 精确 0.7640 / Brier 0.4924；4 个 run 与 5 个实验都落在 `mlflow.db`（`data/processed/runs.json` 存 run_id）。mlflow 追踪 URI 是 `sqlite:///<仓库>/mlflow.db`，实验名 `bank-marketing`。
-- 已完成 M4（模型包与版本）：`packages/core/src/bank/bundle.py`（`model_bundle.v1` 契约、`sha256(canonical_json)` 校验和、staging 原子写、不覆盖旧版本、`current.json` 指针）、`packages/core/src/bank/features.py` 与 `explain.py`（训练与服务共用的预处理与解释路径，所以 `bank_api` 不需要 import `bank_training`）、`packages/training/src/bank_training/export.py`（`python -m bank_training.export --version 1.0.0`，发布门禁 AP≥0.50、名额内精确率≥0.60、特征数≥10）、`docs/adr/0006-模型包与发布.md`、`tests/unit/test_bundle.py`（12 项）。当前线上版本 `models/serving/1.0.0`：特征集 B 21 列、必填输入 14 列、等级切点 优先≥0.6387 / 备选≥0.5730、验证集 AP 0.6498、名额内精确率 0.7416、mlflow run `9df787b6611b4885845aefc674ecfe7e`。模型包不进 Git，演示前要重跑 export。
-- 未开始：M5 服务、M6 前端、M7 漂移、M9 文档。
+- 已完成 M4（模型包与版本）：`packages/core/src/bank/bundle.py`（`model_bundle.v1` 契约、`sha256(canonical_json)` 校验和、staging 原子写、不覆盖旧版本、`current.json` 指针）、`packages/core/src/bank/features.py` 与 `explain.py`（训练与服务共用的预处理与解释路径，所以 `bank_api` 不需要 import `bank_training`）、`packages/training/src/bank_training/export.py`（`python -m bank_training.export --version 1.0.0`，发布门禁 AP≥0.50、名额内精确率≥0.60、特征数≥10）、`docs/adr/0006-模型包与发布.md`、`tests/unit/test_bundle.py`（12 项）。当前线上版本 `models/serving/1.0.0`：特征集 B 21 列、必填输入 15 列、等级切点 优先≥0.6387 / 备选≥0.5730、验证集 AP 0.6498、名额内精确率 0.7416、mlflow run `7d0aa8a9fa084615ade550de1055e790`。模型包不进 Git，演示前要重跑 export。
+- 已完成 M5（服务）：`packages/api/src/bank_api/` 四个模块 + `configs/api.yaml`（批量上限 100、请求号前缀 bank、预测记录路径）、`docs/adr/0007-服务契约与错误码.md`。五条路由：`/health` 永远 200、`/ready` 与 `/v1/model` 在包缺失时 503、`/v1/predict`（字段级 422，`loc` 形如 `["body","年龄"]`）、`/v1/predict/batch`（上限 100）。请求模型由模型包 15 个输入列动态生成，类别列用运行时 `Literal` 内联 `enum`；每条预测追加一行 `{ts, request_id, model_version, score, level, control}` 到 `data/processed/predictions.jsonl`，不写客户特征值。`python -m bank_api` 起服务，`/docs` 可打开。
+- 未开始：M6 前端、M7 漂移、M9 文档。
 - 已定的口径（ADR 0002 为准，别再问）：窗口 **A = 2008-11-01~2010-11-17**（21,093 行 / 4,109 正例）；训练 `<2009-10-01`（17,537 / 2,327 / 13.27%）；验证 `≥2009-10-01`（3,556 / 1,782 / 50.11%）；名额 **356** 人；主口径名额制、阈值 0.5 只作对照；主模型逻辑回归 + **特征集 B**（21 列，去掉月份序/sin/cos 三列，E2 证据见 ADR 0005）、切分按时间、不打乱不分层、缓冲 0 天。
 - 两个会反复踩的事实，先记住：
   1. **行序就是时间序**：30 个月块从 2008-05 走到 2010-11，月份只回绕过两次（跨年），块内日号从不回退；重建日期 2008-05-05–2010-11-17、561 个日期、全局单调。`notebooks/数据口径说明.md` §2.5 写的「没有年份只能随机切分」是错的，改那份文档时按这个结论改。重建日期**必须先把握手序号（`rowid`）落进数据集**，不能依赖 `SELECT *` 的返回顺序。

@@ -1,0 +1,6 @@
+schema_version: 1
+serving:
+  batch_limit: 100          # 批量接口一次最多 100 条，超过 422
+  request_id_prefix: bank
+log:
+  path: data/processed/predictions.jsonl   # 相对仓库根；每预测一行，追加写

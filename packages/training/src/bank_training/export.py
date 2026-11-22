@@ -38,8 +38,16 @@ GATE_AP = 0.50
 GATE_PRECISION = 0.60
 
 
+SERVING_EXCLUDED = (S.DURATION, S.TARGET_RAW)
+
+
 def _inputs(spec: Any) -> list[dict[str, Any]]:
-    """要用户填的原始列：非派生、非禁用。按 `configs/features.yaml` 的原始顺序。"""
+    """要用户填的原始列：非派生，且不是「通话后才知道」的时长与目标列。
+
+    `距上次联系天数` 虽然在特征目录里标了 forbidden（-1 是哨兵，原列不入模），
+    但模型算 `是否被联系过` / `_log` / `档` 都要它，所以它必须是必填输入——
+    forbidden 约束的是「能不能原样喂给模型」，不是「能不能出现在表单上」。
+    """
     return [
         {
             "name": field.name,
@@ -51,7 +59,7 @@ def _inputs(spec: Any) -> list[dict[str, Any]]:
             "categories": list(field.categories) if field.categories else None,
         }
         for field in spec.fields
-        if not field.derived and not field.forbidden
+        if not field.derived and field.name not in SERVING_EXCLUDED
     ]
 
 

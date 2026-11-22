@@ -23,6 +23,7 @@ bank-training = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "import-linter>=2.17",
     "ipykernel>=7.4.0",
     "matplotlib>=3.11.2",
