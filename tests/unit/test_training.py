@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from bank import schema as S
 from bank.catalog import load_catalog
+from bank.explain import explain_one
 from bank_training.baselines import rule_score
 from bank_training.data import load_frozen, split_xy
-from bank_training.explain import explain_one
 from bank_training.metrics import evaluate, threshold_metrics
 from bank_training.model_config import ModelConfigError, load_model_config
 from bank_training.pipeline import build_model

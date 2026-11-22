@@ -23,7 +23,10 @@
 # 6) 对照实验 E1–E5（泄漏列、A/B 特征集、未知填众数、pdays 原列、随机切分）
 .venv\Scripts\python.exe -m bank_training.experiments
 
-# 7) 测试与质量门（交付前最后一关）
+# 7) 导出模型包：models/serving/<版本>/ + current.json（不覆盖旧版本）
+.venv\Scripts\python.exe -m bank_training.export --version 1.0.0
+
+# 8) 测试与质量门（交付前最后一关）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -50,10 +53,23 @@
 
 主模型名额内打中 264 人；规则基线打中 272 人，但概率质量差一倍（Brier 0.49 vs 0.29），取舍见 `docs/adr/0005-模型选择.md`。
 
+模型包（`python -m bank_training.export --version 1.0.0` 输出）：
+
+| 事项 | 数字 |
+| --- | --- |
+| 版本与契约 | `1.0.0` / `model_bundle.v1` |
+| 特征与必填输入 | 21 列 / 14 个原始字段 |
+| 等级切点 | 优先 ≥ 0.6387，备选 ≥ 0.5730（验证集分数分位数，不是概率阈值） |
+| 校验和 | `bundle.json` 与 `model.joblib` 各一份 sha256，加载时都对 |
+| 发布门禁 | 特征 ≥ 10、AP ≥ 0.50、名额内精确率 ≥ 0.60、ROC-AUC > 0.5 |
+| 回退 | 改 `models/serving/current.json` 指回旧版本，不删目录 |
+
+设计取舍见 `docs/adr/0006-模型包与发布.md`。模型包 `models/` 不进 Git，每台机器用一条命令重新导出。
+
 ## 目录
 
 ```
-packages/core       口径规则、数据管道、特征目录、冻结（谁都不依赖）
+packages/core       口径规则、数据管道、特征目录、冻结、模型包、推理路径（谁都不依赖）
 packages/training   训练、评估、规则基线、单条解释（只依赖 core）
 packages/api        推理服务（只依赖 core）
 apps/web            前端（M6）

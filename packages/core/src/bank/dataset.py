@@ -30,22 +30,23 @@ def load_raw(db: Path = S.DB_PATH, table: str = S.RAW_TABLE) -> pd.DataFrame:
     return rawdb.read_plain(table, db)
 
 
-def build_dataset(raw: pd.DataFrame | None = None, db: Path = S.DB_PATH) -> pd.DataFrame:
-    """套用全部口径规则。行数与顺序保持不变，只新增列，不删原始列。
+def derive_features(raw: pd.DataFrame, *, with_label: bool = False) -> pd.DataFrame:
+    """套用派生规则：只新增列，行数与顺序保持不变。
 
-    新增列：
-      label            目标 0/1
-      是否被联系过      pdays != -1
-      距上次联系天数_log  log1p，未联系记 0
-      距上次联系天数档   0=未联系, 1~5 按 30/90/180/365 分档
-      信息完整度        3 - 未知个数
-      教育程度序        小学/中学/高等教育 = 1/2/3，未知留空
-      教育程度_未知     哑变量
-      月份序/月份_sin/月份_cos/日期_sin/日期_cos
+    `with_label=True` 时先加 `label`（构建训练集用）；服务端拿不到「是否认购」，
+    走默认的 `with_label=False`，其余派生列完全相同——训练与服务共用这一段。
     """
-    df = load_raw(db) if raw is None else raw.copy()
+    df = raw.copy()
 
-    df[S.TARGET] = (df[S.TARGET_RAW] == S.POSITIVE).astype("int8")
+    if with_label:
+        if S.TARGET_RAW not in df.columns:
+            raise KeyError(f"缺少目标列 {S.TARGET_RAW}")
+        df[S.TARGET] = (df[S.TARGET_RAW] == S.POSITIVE).astype("int8")
+
+    required = [S.PDAYS, S.EDU, S.MONTH, S.DAY]
+    missing = [name for name in required if name not in df.columns]
+    if missing:
+        raise KeyError(f"缺少原始列：{missing}")
 
     df[S.CONTACTED] = S.pdays_contacted(df[S.PDAYS])
     df[S.PDAYS_LOG] = S.pdays_log(df[S.PDAYS])
@@ -61,6 +62,23 @@ def build_dataset(raw: pd.DataFrame | None = None, db: Path = S.DB_PATH) -> pd.D
     df[S.DAY_SIN], df[S.DAY_COS] = S.cyclical(df[S.DAY], S.DAY_PERIOD)
 
     return df
+
+
+def build_dataset(raw: pd.DataFrame | None = None, db: Path = S.DB_PATH) -> pd.DataFrame:
+    """套用全部口径规则（含标签）。行数与顺序保持不变，只新增列，不删原始列。
+
+    新增列：
+      label            目标 0/1
+      是否被联系过      pdays != -1
+      距上次联系天数_log  log1p，未联系记 0
+      距上次联系天数档   0=未联系, 1~5 按 30/90/180/365 分档
+      信息完整度        3 - 未知个数
+      教育程度序        小学/中学/高等教育 = 1/2/3，未知留空
+      教育程度_未知     哑变量
+      月份序/月份_sin/月份_cos/日期_sin/日期_cos
+    """
+    df = load_raw(db) if raw is None else raw
+    return derive_features(df, with_label=True)
 
 
 def model_features(version: str = "A") -> list[str]:
