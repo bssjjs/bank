@@ -29,7 +29,10 @@
 # 8) 起服务：另一窗口执行，/docs 可打开，127.0.0.1:8000
 .venv\Scripts\python.exe -m bank_api
 
-# 9) 测试与质量门（交付前最后一关）
+# 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
+.venv\Scripts\python.exe -m bank_training.drift
+
+# 10) 测试与质量门（交付前最后一关）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -81,6 +84,22 @@
 
 每条预测追加一行到 `data/processed/predictions.jsonl`（`ts/request_id/model_version/score/level/control`，不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
 
+漂移监控（`python -m bank_training.drift`，基准=训练集 17,537 行，对照=验证集 3,556 行扮演「线上」批次）：
+
+| 特征 | PSI | 判级 |
+| --- | --- | --- |
+| 联系月份 | 3.4028 | 严重 |
+| 住房贷款 | 0.8087 | 严重 |
+| 上次营销结果 | 0.6573 | 严重 |
+| 职业 | 0.4583 | 严重 |
+| 历史联系次数 | 0.3500 | 严重 |
+| 年龄 | 0.2797 | 严重 |
+| 联系方式 / 联系日期 / 账户余额 / 距上次联系天数 | 0.2318 / 0.2003 / 0.1944 / 0.1604 | 关注 |
+| 个人贷款 / 教育程度 / 是否信贷违约 / 本次联系次数 / 婚姻状态 | 0.0881 / 0.0530 / 0.0282 / 0.0224 / 0.0084 | 稳定 |
+| 分数 | 1.0851 | 严重 |
+
+判级阈值：< 0.1 稳定，0.1–0.25 关注，≥ 0.25 严重；分箱边界只取基准集，缺失单独一箱，类别未见值合并「其他」。正例率同期 13.27% → 50.11%（+277.66%），与分数 PSI 同向，说明这是真实的时期漂移，不是数据错误。结果落 `data/processed/drift.json`（契约 `drift_report.v1`）并记一个 `m7-drift` run。回流与重训条件见 `docs/adr/0008-漂移监控与回流.md`。
+
 ## 目录
 
 ```
@@ -114,7 +133,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / note
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择） |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流） |
 | `docs/notes/参考项目经验.md` | 两个参考项目哪些机制值得搬 |
 | `notebooks/数据口径说明.md` | 早期口径分析与结论（§2.5 已更正为按时间切分） |
 

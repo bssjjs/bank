@@ -24,7 +24,7 @@
 
 ## 二、怎么算完成
 
-现在能跑的命令（不要自创第九条）：
+现在能跑的命令（不要自创第十条）：
 
 ```powershell
 .venv\Scripts\python.exe -m bank.build
@@ -34,6 +34,7 @@
 .venv\Scripts\python.exe -m bank_training.experiments
 .venv\Scripts\python.exe -m bank_training.export --version 1.0.0
 .venv\Scripts\python.exe -m bank_api          # 起服务，127.0.0.1:8000
+.venv\Scripts\python.exe -m bank_training.drift  # 对「线上」批次跑 PSI，默认对比验证集
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -42,7 +43,7 @@
 - `bank.profile` 是文档数字的唯一出处：`docs/data_card.md`、`docs/spec.md` 里的行数、正例率、漂移表、口径冲突行数、泄漏 AUC 全部来自它。改数据或改口径后，先跑它，再改文档。
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（134 项）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）、13 项特征目录（合法性 + 与 schema 对账）、13 项配置（拼错键/重复键/越界值/名额公式）、9 项架构（依赖方向、包布局、质量门存在）、5 项注册表（规则登记、顺序、致命标记）、11 项训练（指标口径、规则基线分值、Pipeline 可复现、解释排序、模型配置校验）、12 项模型包（契约字段、校验和、缺列拒绝、版本不覆盖、篡改拒绝、版本指针）、12 项服务（探针、字段级 422、批量上限、预测记录、无包时 503）、6 项契约（OpenAPI 的必填/范围/枚举/批量上限与模型包对账）。
+- `pytest tests` 必须全过（145 项）：14 项 schema、14 项时间轴（4 项拿真实库校验 561 个日期/30 个月块/缺 2008-09）、25 项冻结层（清洗规则、切分边界、指纹稳定、manifest 契约数字）、13 项特征目录（合法性 + 与 schema 对账）、13 项配置（拼错键/重复键/越界值/名额公式）、9 项架构（依赖方向、包布局、质量门存在）、5 项注册表（规则登记、顺序、致命标记）、11 项训练（指标口径、规则基线分值、Pipeline 可复现、解释排序、模型配置校验）、12 项模型包（契约字段、校验和、缺列拒绝、版本不覆盖、篡改拒绝、版本指针）、12 项服务（探针、字段级 422、批量上限、预测记录、无包时 503）、6 项契约（OpenAPI 的必填/范围/枚举/批量上限与模型包对账）、11 项漂移（分箱只取基准、缺失单独一箱、未见类别合并、阈值分级）。
 - `scripts/ci.py` 是交付前最后一关：五道门（ruff check、ruff format --check、mypy、lint-imports、pytest）必须全绿，末行打印「质量门：全绿」。任何一道红都不算完成。
 - 交付时贴命令与输出的最后几行原文；没跑过的命令不写进文档，没跑出来的数字不进报告。
 
@@ -107,7 +108,8 @@ docs/modules/                模块卡：目标 / 验收 / 不做
 - 已完成 M3（训练与评估）：`packages/training/src/bank_training/` 六个模块 + `train.py` / `experiments.py` 两个入口、`configs/model.yaml`（超参数单独一份，改它不动冻结指纹）、`docs/adr/0005`（模型选择，含 A/B 与 RF 证据）、`docs/model_card.md`（指标、校准、限制）、`docs/spec.md` 第 6 节 E1–E5 回填、`tests/unit/test_training.py`（11 项）。**主模型逻辑回归 + 特征集 B（21 列，去掉月份三列）+ C=1.0**，验证集 AP 0.6498 / 名额内精确 0.7416 / 召回 0.1481 / Brier 0.2852，名额 356 人里打中 264 人；规则基线 AP 0.6412 / 精确 0.7640 / Brier 0.4924；4 个 run 与 5 个实验都落在 `mlflow.db`（`data/processed/runs.json` 存 run_id）。mlflow 追踪 URI 是 `sqlite:///<仓库>/mlflow.db`，实验名 `bank-marketing`。
 - 已完成 M4（模型包与版本）：`packages/core/src/bank/bundle.py`（`model_bundle.v1` 契约、`sha256(canonical_json)` 校验和、staging 原子写、不覆盖旧版本、`current.json` 指针）、`packages/core/src/bank/features.py` 与 `explain.py`（训练与服务共用的预处理与解释路径，所以 `bank_api` 不需要 import `bank_training`）、`packages/training/src/bank_training/export.py`（`python -m bank_training.export --version 1.0.0`，发布门禁 AP≥0.50、名额内精确率≥0.60、特征数≥10）、`docs/adr/0006-模型包与发布.md`、`tests/unit/test_bundle.py`（12 项）。当前线上版本 `models/serving/1.0.0`：特征集 B 21 列、必填输入 15 列、等级切点 优先≥0.6387 / 备选≥0.5730、验证集 AP 0.6498、名额内精确率 0.7416、mlflow run `7d0aa8a9fa084615ade550de1055e790`。模型包不进 Git，演示前要重跑 export。
 - 已完成 M5（服务）：`packages/api/src/bank_api/` 四个模块 + `configs/api.yaml`（批量上限 100、请求号前缀 bank、预测记录路径）、`docs/adr/0007-服务契约与错误码.md`。五条路由：`/health` 永远 200、`/ready` 与 `/v1/model` 在包缺失时 503、`/v1/predict`（字段级 422，`loc` 形如 `["body","年龄"]`）、`/v1/predict/batch`（上限 100）。请求模型由模型包 15 个输入列动态生成，类别列用运行时 `Literal` 内联 `enum`；每条预测追加一行 `{ts, request_id, model_version, score, level, control}` 到 `data/processed/predictions.jsonl`，不写客户特征值。`python -m bank_api` 起服务，`/docs` 可打开。
-- 未开始：M6 前端、M7 漂移、M9 文档。
+- 已完成 M7（漂移与回流）：`packages/core/src/bank/drift.py`（PSI：等频 10 箱、边界只取基准集、缺失单独一箱、类别未见值合并「其他」）、`packages/training/src/bank_training/drift.py`（`python -m bank_training.drift`，基准=训练集、对照默认验证集、落 `data/processed/drift.json` 与 mlflow run `m7-drift`）、`docs/adr/0008-漂移监控与回流.md`（阈值 0.1/0.25、只看 15 个原始输入 + score、标签回流与对照组、三条重训条件）、`tests/unit/test_drift.py`（11 项）。实测：联系月份 PSI 3.4028、住房贷款 0.8087、上次营销结果 0.6573、职业 0.4583、历史联系次数 0.3500、年龄 0.2797 为「严重」；score 1.0851；正例率 13.27% → 50.11%（+277.66%）。
+- 未开始：M6 前端、M9 文档。
 - 已定的口径（ADR 0002 为准，别再问）：窗口 **A = 2008-11-01~2010-11-17**（21,093 行 / 4,109 正例）；训练 `<2009-10-01`（17,537 / 2,327 / 13.27%）；验证 `≥2009-10-01`（3,556 / 1,782 / 50.11%）；名额 **356** 人；主口径名额制、阈值 0.5 只作对照；主模型逻辑回归 + **特征集 B**（21 列，去掉月份序/sin/cos 三列，E2 证据见 ADR 0005）、切分按时间、不打乱不分层、缓冲 0 天。
 - 两个会反复踩的事实，先记住：
   1. **行序就是时间序**：30 个月块从 2008-05 走到 2010-11，月份只回绕过两次（跨年），块内日号从不回退；重建日期 2008-05-05–2010-11-17、561 个日期、全局单调。`notebooks/数据口径说明.md` §2.5 写的「没有年份只能随机切分」是错的，改那份文档时按这个结论改。重建日期**必须先把握手序号（`rowid`）落进数据集**，不能依赖 `SELECT *` 的返回顺序。
