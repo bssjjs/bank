@@ -3,7 +3,7 @@
   "builder": "bank.freeze/1",
   "config": {
     "path": "configs/base.yaml",
-    "sha256": "76d9cb883bfb994962de05e19b9d553076baa805058483b56f004f0431335822"
+    "sha256": "d5259bab647042294d6e54a83e1868acd1875df66cf98edfe5fa0b27087d92ab"
   },
   "source": {
     "path": "data/bank-marketing.db",
@@ -47,7 +47,7 @@
     "end": "2010-11-17",
     "cut": "2009-10-01",
     "buffer_days": 0,
-    "feature_set": "A"
+    "feature_set": "B"
   },
   "tables": {
     "train": {
@@ -73,7 +73,7 @@
     "rows": 21093,
     "positives": 4109,
     "pos_rate": 0.1948,
-    "n_features": 24,
+    "n_features": 21,
     "quota_n": 356,
     "quota_frac": 0.1
   },

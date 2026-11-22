@@ -50,7 +50,8 @@ class ConfigLoadTest(unittest.TestCase):
         self.assertEqual(cfg.split.cut.isoformat(), "2009-10-01")
         self.assertEqual(cfg.split.buffer_days, 0)
         self.assertEqual(cfg.quota.frac, 0.10)
-        self.assertEqual(cfg.features.set, "A")
+        # E2 之后主口径改用特征集 B（去掉月份三列），证据在 ADR 0005
+        self.assertEqual(cfg.features.set, "B")
         self.assertEqual(cfg.seed, 20261122)
         self.assertEqual(cfg.target.window_days, 0)
 

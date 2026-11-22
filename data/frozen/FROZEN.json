@@ -7,7 +7,7 @@
   },
   "config": {
     "path": "configs/base.yaml",
-    "sha256": "76d9cb883bfb994962de05e19b9d553076baa805058483b56f004f0431335822"
+    "sha256": "d5259bab647042294d6e54a83e1868acd1875df66cf98edfe5fa0b27087d92ab"
   },
   "tables": {
     "train": {
@@ -31,7 +31,7 @@
       "bytes": 100907
     },
     "manifest.json": {
-      "sha256": "33f17f23192e01fcc147e58016f572dca96f2b45564459fdea4c620c286ba9a8",
+      "sha256": "5acc204774ffb7e12671d8543c3a0a264f9c699b689df9c221d4998607d3c352",
       "bytes": 3819
     }
   }

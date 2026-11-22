@@ -1,6 +1,18 @@
-"""bank_training：训练、评估与模型包导出。
+"""训练侧：读冻结集、装配同一条特征处理路径、算指标、训练与记录。
 
-只依赖 bank（core），**不依赖** bank_api：训练不知道自己将来被谁服务。
+只读 `data/frozen/`，不再从原始库现算；派生列已经在冻结集里（由
+`bank.dataset.build_dataset` 生成，训练与服务共用那一份实现）。
 """
 
-from __future__ import annotations
+from bank_training.data import FrozenError, load_frozen, split_xy
+from bank_training.metrics import evaluate
+from bank_training.pipeline import build_model, build_preprocessor
+
+__all__ = [
+    "FrozenError",
+    "build_model",
+    "build_preprocessor",
+    "evaluate",
+    "load_frozen",
+    "split_xy",
+]

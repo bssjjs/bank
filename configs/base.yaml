@@ -23,7 +23,10 @@ quota:
   frac: 0.10
 
 features:
-  set: A
+  # A = 含月份序/月份 sin/cos 的 24 列；B = 去掉这 3 列时间特征的 21 列。
+  # E4 对照实验（docs/spec.md 第 6 节）：B 在时间切分下 AP 与名额内精确率都更好，
+  # 见 docs/adr/0005-模型选择.md。
+  set: B
 
 target:
   column: 是否认购

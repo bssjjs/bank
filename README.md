@@ -17,7 +17,13 @@
 # 4) 冻结：按时序切分、算三级指纹、写 manifest（--check 只校验不重建）
 .venv\Scripts\python.exe -m bank.freeze
 
-# 5) 测试与质量门（交付前最后一关）
+# 5) 训练与评估：两条基线 + 主模型，指标与产物全部记进 mlflow
+.venv\Scripts\python.exe -m bank_training.train
+
+# 6) 对照实验 E1–E5（泄漏列、A/B 特征集、未知填众数、pdays 原列、随机切分）
+.venv\Scripts\python.exe -m bank_training.experiments
+
+# 7) 测试与质量门（交付前最后一关）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 ```
@@ -33,11 +39,22 @@
 | 每日名额 | 356 人（验证集 3,556 × 10%，向上取整） |
 | 清洗 | 7 条规则命中 5 行，全是 R3 记账，无删行 |
 
+主模型结果（`python -m bank_training.train` 输出，验证集 3,556 人 / 名额 356 人）：
+
+| 模型 | AP | ROC-AUC | 名额内精确率 | 名额内召回率 | Brier |
+| --- | --- | --- | --- | --- | --- |
+| 规则基线（权重打分） | 0.6412 | 0.6510 | 0.7640 | 0.1526 | 0.4924 |
+| 逻辑回归 + 特征集 A | 0.5959 | 0.6116 | 0.6180 | 0.1235 | 0.3104 |
+| **逻辑回归 + 特征集 B（主模型）** | **0.6498** | 0.6438 | 0.7416 | 0.1481 | **0.2852** |
+| 随机森林 + 特征集 A（对照） | 0.6229 | 0.6024 | 0.7500 | 0.1498 | 0.2875 |
+
+主模型名额内打中 264 人；规则基线打中 272 人，但概率质量差一倍（Brier 0.49 vs 0.29），取舍见 `docs/adr/0005-模型选择.md`。
+
 ## 目录
 
 ```
 packages/core       口径规则、数据管道、特征目录、冻结（谁都不依赖）
-packages/training   训练、评估、模型包（只依赖 core）
+packages/training   训练、评估、规则基线、单条解释（只依赖 core）
 packages/api        推理服务（只依赖 core）
 apps/web            前端（M6）
 configs/            base.yaml 口径数字；features.yaml 字段唯一出处（含禁用列）
@@ -65,7 +82,8 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / note
 | `docs/spec.md` | 口径规格表：17 列逐列判定、派生列、禁用列、切分、名额、对照实验、清洗台账 |
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构） |
+| `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择） |
 | `docs/notes/参考项目经验.md` | 两个参考项目哪些机制值得搬 |
 | `notebooks/数据口径说明.md` | 早期口径分析与结论（§2.5 已更正为按时间切分） |
 
