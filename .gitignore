@@ -1,0 +1,45 @@
+# ---------------- 环境 ----------------
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+# ---------------- 工具缓存 ----------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.import_linter_cache/
+.coverage
+coverage.xml
+htmlcov/
+.cache/
+
+# ---------------- Notebook ----------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# ---------------- 数据与产物（不进 Git）----------------
+# 原始数据：只有本机一份，只读；来源与许可见 docs/data_card.md
+data/raw/
+# 构建产物（parquet / manifest 等），由命令重算
+data/processed/
+# 顶层落盘的原始库与数据集（当前 build 的产物位置）
+data/*.db
+data/*.parquet
+data/*.parquet.tmp
+# 模型包：每版一个目录，只在发布时生成
+models/
+# 实验追踪
+mlflow.db
+mlruns/
+# 日志与审计（本地追加文件）
+*.log
+*.jsonl
+
+# ---------------- 系统 ----------------
+.DS_Store
+Thumbs.db
+desktop.ini
