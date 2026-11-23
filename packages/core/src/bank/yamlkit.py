@@ -40,6 +40,10 @@ def load_mapping(path: Path, *, what: str = "配置文件") -> dict[str, Any]:
         raise
     except yaml.YAMLError as exc:
         raise YamlError(f"{what}不是合法 YAML：{exc}") from exc
+    except ValueError as exc:
+        # 比如 `cut: 2009-13-01`：PyYAML 把日期当隐式类型解析，直接抛 ValueError。
+        # 不接住的话上层只能看到「month must be in 1..12」，不知道是哪个文件哪个键。
+        raise YamlError(f"{what} {path} 里有不合法的取值：{exc}") from exc
     if not isinstance(raw, dict):
         raise YamlError(f"{what}顶层必须是映射（key: value）")
     return raw

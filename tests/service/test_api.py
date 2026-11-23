@@ -1,6 +1,9 @@
 """M5 服务的行为测试：探针、契约、422 字段级报错、预测记录。
 
 用 TestClient 跑在进程内，不占端口；模型包用 `models/serving` 里真实的 1.0.0。
+
+模型包不在 Git 里（10 KB 也是二进制），所以**干净检出时这里会先导出一次**：
+质量门不能依赖"我本机跑过 export"这种前提，否则换台机器或换个 tag 回放就红。
 """
 
 from __future__ import annotations
@@ -17,6 +20,10 @@ from bank import schema as S
 from bank_api.app import create_app
 from bank_training.data import load_frozen
 from fastapi.testclient import TestClient
+
+from tests.support import ensure_served_bundle
+
+VERSION = "1.0.0"
 
 
 def _new_root() -> Path:
@@ -36,6 +43,7 @@ def _payload(bundle: B.Bundle, row: Any) -> dict[str, Any]:
 class ApiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        ensure_served_bundle(VERSION)
         cls.bundle = B.load_bundle(B.SERVING_DIR)
         cls.valid = load_frozen()[1]
         cls.root = _new_root()

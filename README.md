@@ -32,9 +32,15 @@
 # 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
 .venv\Scripts\python.exe -m bank_training.drift
 
-# 10) 测试与质量门（交付前最后一关）
+# 10) 测试与质量门（交付前最后一关；pytest 225 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
+
+# 11) 基线封条：第一轮结果的文件指纹，改了数字必须复跑
+.venv\Scripts\python.exe scripts\freeze_baseline.py --check
+
+# 12) 回放：每个 step-* tag 各建一次干净环境、重建产物、跑质量门（慢）
+.venv\Scripts\python.exe scripts\replay_steps.py
 ```
 
 冻结的基线数字（`python -m bank.freeze` 输出，改数据或口径后必须重跑核对）：
@@ -110,9 +116,11 @@ apps/web            前端（M6）
 configs/            base.yaml 口径数字；features.yaml 字段唯一出处（含禁用列）
 data/raw|frozen|processed
 models/serving/     模型包，每版一个目录，不覆盖
-scripts/ci.py       五道门：ruff check / ruff format / mypy / lint-imports / pytest
-tests/              unit / contract / architecture / service
-docs/               problem / spec / data_card / pitfalls / adr / modules / notes
+scripts/ci.py       五道门：ruff check / ruff format / mypy / lint-imports / pytest（覆盖率 85）
+scripts/            另两个：freeze_baseline.py 基线封条、replay_steps.py 按 tag 回放
+baselines/          第一轮结果的文件封条：v1/ 快照 + SHA256SUMS
+tests/              unit / contract / architecture / service / exam（考卷）
+docs/               problem / spec / data_card / pitfalls / adr / modules / steps / cards / notes
 ```
 
 ## 口径要点（答辩必问）
@@ -134,6 +142,9 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / note
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
 | `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流） |
+| `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
+| `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
+| `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |
 | `docs/notes/参考项目经验.md` | 两个参考项目哪些机制值得搬 |
 | `notebooks/数据口径说明.md` | 早期口径分析与结论（§2.5 已更正为按时间切分） |
 

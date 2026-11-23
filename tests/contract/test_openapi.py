@@ -10,10 +10,13 @@ from bank import catalog
 from bank_api.app import create_app
 from fastapi.testclient import TestClient
 
+from tests.support import ensure_served_bundle
+
 
 class OpenApiContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        ensure_served_bundle()
         cls.bundle = B.load_bundle(B.SERVING_DIR)
         cls.spec = catalog.load_catalog()
         cls.client = TestClient(create_app())
