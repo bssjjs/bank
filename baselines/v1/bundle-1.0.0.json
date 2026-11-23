@@ -1,0 +1,370 @@
+{
+  "contract": "model_bundle.v1",
+  "version": "1.0.0",
+  "created_at": "2026-11-22T17:42:34+08:00",
+  "model_file": {
+    "name": "model.joblib",
+    "sha256": "2ca9264271388babea2447f22113b708083db1b47298482c283aaf560332c271",
+    "size": 10666
+  },
+  "feature_set": "B",
+  "features": [
+    {
+      "name": "年龄",
+      "type": "numeric",
+      "order": 1
+    },
+    {
+      "name": "账户余额",
+      "type": "numeric",
+      "order": 2
+    },
+    {
+      "name": "本次联系次数",
+      "type": "numeric",
+      "order": 3
+    },
+    {
+      "name": "历史联系次数",
+      "type": "numeric",
+      "order": 4
+    },
+    {
+      "name": "距上次联系天数_log",
+      "type": "numeric",
+      "order": 5
+    },
+    {
+      "name": "信息完整度",
+      "type": "numeric",
+      "order": 6
+    },
+    {
+      "name": "职业",
+      "type": "categorical",
+      "order": 7
+    },
+    {
+      "name": "婚姻状态",
+      "type": "categorical",
+      "order": 8
+    },
+    {
+      "name": "教育程度",
+      "type": "categorical",
+      "order": 9
+    },
+    {
+      "name": "是否信贷违约",
+      "type": "binary",
+      "order": 10
+    },
+    {
+      "name": "住房贷款",
+      "type": "binary",
+      "order": 11
+    },
+    {
+      "name": "个人贷款",
+      "type": "binary",
+      "order": 12
+    },
+    {
+      "name": "联系方式",
+      "type": "categorical",
+      "order": 13
+    },
+    {
+      "name": "上次营销结果",
+      "type": "categorical",
+      "order": 14
+    },
+    {
+      "name": "教育程度_未知",
+      "type": "binary",
+      "order": 15
+    },
+    {
+      "name": "是否被联系过",
+      "type": "binary",
+      "order": 16
+    },
+    {
+      "name": "距上次联系天数档",
+      "type": "ordinal",
+      "order": 17
+    },
+    {
+      "name": "教育程度序",
+      "type": "ordinal",
+      "order": 18
+    },
+    {
+      "name": "联系日期",
+      "type": "time",
+      "order": 19
+    },
+    {
+      "name": "日期_sin",
+      "type": "numeric",
+      "order": 20
+    },
+    {
+      "name": "日期_cos",
+      "type": "numeric",
+      "order": 21
+    }
+  ],
+  "inputs": [
+    {
+      "name": "年龄",
+      "type": "numeric",
+      "display": "年龄",
+      "unit": "岁",
+      "min": 18.0,
+      "max": 95.0,
+      "categories": null
+    },
+    {
+      "name": "职业",
+      "type": "categorical",
+      "display": "职业",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "行政人员",
+        "蓝领工人",
+        "技术人员",
+        "服务业",
+        "管理人员",
+        "退休",
+        "企业家",
+        "学生",
+        "家政",
+        "失业",
+        "自由职业",
+        "未知"
+      ]
+    },
+    {
+      "name": "婚姻状态",
+      "type": "categorical",
+      "display": "婚姻状态",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "已婚",
+        "未婚",
+        "离婚"
+      ]
+    },
+    {
+      "name": "教育程度",
+      "type": "categorical",
+      "display": "教育程度",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "小学",
+        "中学",
+        "高等教育",
+        "未知"
+      ]
+    },
+    {
+      "name": "是否信贷违约",
+      "type": "binary",
+      "display": "是否有信贷违约",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "是",
+        "否"
+      ]
+    },
+    {
+      "name": "账户余额",
+      "type": "numeric",
+      "display": "账户余额",
+      "unit": "元",
+      "min": -8019.0,
+      "max": 102127.0,
+      "categories": null
+    },
+    {
+      "name": "住房贷款",
+      "type": "binary",
+      "display": "是否有住房贷款",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "是",
+        "否"
+      ]
+    },
+    {
+      "name": "个人贷款",
+      "type": "binary",
+      "display": "是否有个人贷款",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "是",
+        "否"
+      ]
+    },
+    {
+      "name": "联系方式",
+      "type": "categorical",
+      "display": "联系方式",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "手机",
+        "固话",
+        "未知"
+      ]
+    },
+    {
+      "name": "联系日期",
+      "type": "time",
+      "display": "联系日（几号）",
+      "unit": null,
+      "min": 1.0,
+      "max": 31.0,
+      "categories": null
+    },
+    {
+      "name": "联系月份",
+      "type": "categorical",
+      "display": "联系月份",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "一月",
+        "二月",
+        "三月",
+        "四月",
+        "五月",
+        "六月",
+        "七月",
+        "八月",
+        "九月",
+        "十月",
+        "十一月",
+        "十二月"
+      ]
+    },
+    {
+      "name": "本次联系次数",
+      "type": "numeric",
+      "display": "本次活动累计联系次数",
+      "unit": null,
+      "min": 1.0,
+      "max": 63.0,
+      "categories": null
+    },
+    {
+      "name": "距上次联系天数",
+      "type": "numeric",
+      "display": "距上次联系天数（-1 表示从未联系）",
+      "unit": null,
+      "min": -1.0,
+      "max": 871.0,
+      "categories": null
+    },
+    {
+      "name": "历史联系次数",
+      "type": "numeric",
+      "display": "本次营销活动之前的联系次数",
+      "unit": null,
+      "min": 0.0,
+      "max": 275.0,
+      "categories": null
+    },
+    {
+      "name": "上次营销结果",
+      "type": "categorical",
+      "display": "上一次营销活动结果",
+      "unit": null,
+      "min": null,
+      "max": null,
+      "categories": [
+        "成功",
+        "失败",
+        "其他",
+        "未知"
+      ]
+    }
+  ],
+  "required_columns": [
+    "年龄",
+    "职业",
+    "婚姻状态",
+    "教育程度",
+    "是否信贷违约",
+    "账户余额",
+    "住房贷款",
+    "个人贷款",
+    "联系方式",
+    "联系日期",
+    "联系月份",
+    "本次联系次数",
+    "距上次联系天数",
+    "历史联系次数",
+    "上次营销结果"
+  ],
+  "catalog_fingerprint": "07228d42233e4b72c476953dd0bf2db5a2526e5308c55caa54a9804be4f1b60a",
+  "decision": {
+    "mode": "quota",
+    "quota_frac": 0.1,
+    "quota_n": 356,
+    "level_cutoffs": {
+      "优先": 0.638743,
+      "备选": 0.57298
+    },
+    "threshold": 0.5,
+    "explain_top_k": 5
+  },
+  "metrics": {
+    "n": 3556.0,
+    "positives": 1782.0,
+    "quota_n": 356.0,
+    "base_rate": 0.501125,
+    "ap": 0.649808,
+    "roc_auc": 0.643812,
+    "precision_at_quota": 0.741573,
+    "recall_at_quota": 0.148148,
+    "lift_at_quota": 1.4798,
+    "brier": 0.285249,
+    "score_mean": 0.271931,
+    "t05_threshold": 0.5,
+    "t05_selected": 574.0,
+    "t05_precision": 0.759582,
+    "t05_recall": 0.244669
+  },
+  "training": {
+    "run_id": "7d0aa8a9fa084615ade550de1055e790",
+    "experiment": "bank-marketing",
+    "data_fingerprint_train": "03832a965af755657b3f36a0fcd93438c1f00c206fd31a586f0f71d93fea5ff5",
+    "data_fingerprint_valid": "d680004e613fdb0ca405a4a2c2d0234b954152255ac46f34a815250f9918fbd0",
+    "config_fingerprint": "d5259bab647042294d6e54a83e1868acd1875df66cf98edfe5fa0b27087d92ab",
+    "git_sha": "f706863e89d8d013d752489ff9bd095d36267f4f",
+    "trained_at": "2026-11-22T17:42:33+08:00",
+    "rows_train": 17537,
+    "rows_valid": 3556,
+    "n_features": 21
+  },
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "ebb55079fa1627370e74531b192712a02ca2322fb40e198c961630d43f2c1614"
+  }
+}

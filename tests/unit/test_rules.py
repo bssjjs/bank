@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+import pandas as pd
 from bank import clean as CL
 from bank import rules as R
 
@@ -34,7 +35,7 @@ class RegistryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             @R.rule("R1_标签取值", "重复", fatal=True, note="")
-            def _dup(df):  # type: ignore[no-untyped-def]
+            def _dup(df: pd.DataFrame) -> pd.Series:
                 return df["x"] > 0
 
     def test_every_rule_has_note(self) -> None:

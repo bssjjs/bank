@@ -1,0 +1,40 @@
+{
+  "metrics": {
+    "ap": 0.595907,
+    "base_rate": 0.501125,
+    "brier": 0.310405,
+    "lift_at_quota": 1.2332,
+    "n": 3556.0,
+    "positives": 1782.0,
+    "precision_at_quota": 0.617978,
+    "quota_n": 356.0,
+    "recall_at_quota": 0.123457,
+    "roc_auc": 0.611611,
+    "score_mean": 0.252549,
+    "t05_precision": 0.637413,
+    "t05_recall": 0.154882,
+    "t05_selected": 433.0,
+    "t05_threshold": 0.5
+  },
+  "params": {
+    "c": 1.0,
+    "feature_set": "A",
+    "max_iter": 5000,
+    "model": "lr",
+    "n_features": 24,
+    "n_train": 17537,
+    "n_valid": 3556,
+    "positives_train": 2327,
+    "positives_valid": 1782,
+    "quota_frac": 0.1,
+    "quota_n": 356,
+    "seed": 20261122
+  },
+  "tags": {
+    "config_fingerprint": "d5259bab64704229",
+    "cut": "2009-10-01",
+    "data_fingerprint": "03832a965af75565",
+    "git_sha": "15b29e9139cb98e0230faba2547d83df858989f0",
+    "window": "2008-11-01~2010-11-17"
+  }
+}

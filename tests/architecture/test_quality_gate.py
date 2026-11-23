@@ -138,9 +138,12 @@ class HygieneTest(unittest.TestCase):
     def test_no_suppression_comments_in_source(self) -> None:
         # 只看真正的注释（tokenize），文档字符串里提到这些词不算犯规
         offenders: list[str] = []
-        for path in list((ROOT / "packages").rglob("*.py")) + list(
-            (ROOT / "scripts").rglob("*.py")
-        ):
+        sources = [
+            *(ROOT / "packages").rglob("*.py"),
+            *(ROOT / "scripts").rglob("*.py"),
+            *(ROOT / "tests").rglob("*.py"),
+        ]
+        for path in sources:
             text = path.read_text(encoding="utf-8")
             for token in tokenize.generate_tokens(io.StringIO(text).readline):
                 if token.type != tokenize.COMMENT:

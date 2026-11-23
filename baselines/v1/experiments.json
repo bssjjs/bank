@@ -1,0 +1,88 @@
+{
+  "E1": {
+    "ap": 0.657088,
+    "base_rate": 0.501125,
+    "brier": 0.294714,
+    "lift_at_quota": 1.5751,
+    "n": 3556.0,
+    "positives": 1782.0,
+    "precision_at_quota": 0.789326,
+    "quota_n": 356.0,
+    "recall_at_quota": 0.157688,
+    "roc_auc": 0.676217,
+    "run_id": "7e9bccdb009b4d1da7d08d7f69bba69f",
+    "score_mean": 0.262973
+  },
+  "E2": {
+    "A": {
+      "ap": 0.595907,
+      "base_rate": 0.501125,
+      "brier": 0.310405,
+      "lift_at_quota": 1.2332,
+      "n": 3556.0,
+      "positives": 1782.0,
+      "precision_at_quota": 0.617978,
+      "quota_n": 356.0,
+      "recall_at_quota": 0.123457,
+      "roc_auc": 0.611611,
+      "score_mean": 0.252549
+    },
+    "B": {
+      "ap": 0.649808,
+      "base_rate": 0.501125,
+      "brier": 0.285249,
+      "lift_at_quota": 1.4798,
+      "n": 3556.0,
+      "positives": 1782.0,
+      "precision_at_quota": 0.741573,
+      "quota_n": 356.0,
+      "recall_at_quota": 0.148148,
+      "roc_auc": 0.643812,
+      "score_mean": 0.271931
+    },
+    "run_id": "77a57d3e183147ffb151786aa66b4434"
+  },
+  "E3": {
+    "ap": 0.620353,
+    "base_rate": 0.501125,
+    "brier": 0.306497,
+    "lift_at_quota": 1.435,
+    "n": 3556.0,
+    "positives": 1782.0,
+    "precision_at_quota": 0.719101,
+    "quota_n": 356.0,
+    "recall_at_quota": 0.143659,
+    "roc_auc": 0.622289,
+    "run_id": "c343308a40b44c89a5a5a763b21ae7e4",
+    "score_mean": 0.247933
+  },
+  "E4": {
+    "ap": 0.599552,
+    "base_rate": 0.501125,
+    "brier": 0.310153,
+    "lift_at_quota": 1.2444,
+    "n": 3556.0,
+    "positives": 1782.0,
+    "precision_at_quota": 0.623596,
+    "quota_n": 356.0,
+    "recall_at_quota": 0.124579,
+    "roc_auc": 0.612526,
+    "run_id": "d8d8f8e7219244de95b474d83e2a5bb9",
+    "score_mean": 0.25159
+  },
+  "E5": {
+    "ap": 0.471011,
+    "base_rate": 0.205736,
+    "brier": 0.138674,
+    "lift_at_quota": 2.868,
+    "n": 4219.0,
+    "positives": 868.0,
+    "precision_at_quota": 0.590047,
+    "quota_n": 422.0,
+    "recall_at_quota": 0.286866,
+    "roc_auc": 0.742223,
+    "run_id": "7f668677fc954710be326c4e7d52e5ae",
+    "score_mean": 0.193644
+  },
+  "quota_n": 356
+}
