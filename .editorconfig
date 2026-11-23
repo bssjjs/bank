@@ -1,0 +1,20 @@
+# 编辑器约定：不同人用不同编辑器，缩进和换行不该成为 diff 噪音。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yaml,yml,json,md,html,css,js,toml}]
+indent_size = 2
+
+[*.md]
+# 中文文档里行尾两个空格是有意义的换行，不要被剥离
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

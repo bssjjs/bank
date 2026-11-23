@@ -64,4 +64,16 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # 工作区目录被沙箱 ACL 挡住写 .pytest_cache，缓存对本项目也没用
+# 不加 pythonpath：导入靠 uv 装好的 editable 包，目录结构问题必须暴露出来
 addopts = "-q -p no:cacheprovider"
+
+[tool.coverage.run]
+# 只统计三个包的代码；scripts/ 与 tests/ 不进分母
+source = ["packages"]
+
+[tool.coverage.report]
+# 门槛写在配置里，不写在命令行：ci.py 与手动跑用的是同一个数字
+fail_under = 85
+skip_covered = true
+skip_empty = true
+show_missing = true

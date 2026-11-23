@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -17,10 +18,14 @@ from sklearn.pipeline import Pipeline
 EXPLAIN_METHOD = "linear_coef_x_scaled"
 
 
-def column_names(preprocessor: object) -> list[str]:
-    """按 ColumnTransformer 的实际输出顺序拼出列名。"""
+def column_names(preprocessor: Any) -> list[str]:
+    """按 ColumnTransformer 的实际输出顺序拼出列名。
+
+    参数标注为 `Any`：sklearn 本身不带类型信息，`ColumnTransformer.transformers_`
+    在 `object` 上是看不到的；与其写 `# type: ignore`，不如让调用方传已 fit 的预处理步。
+    """
     names: list[str] = []
-    for name, transformer, columns in preprocessor.transformers_:  # type: ignore[attr-defined]
+    for name, transformer, columns in preprocessor.transformers_:
         cols = list(columns)
         if name == "num":
             names.extend(cols)

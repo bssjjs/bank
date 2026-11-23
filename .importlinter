@@ -4,7 +4,7 @@ root_packages =
     bank_training
     bank_api
 
-[importlinter:contract:core-is-a-base]
+[importlinter:contract:core-independent]
 name = core 不依赖训练与服务
 type = forbidden
 source_modules =
@@ -13,7 +13,7 @@ forbidden_modules =
     bank_training
     bank_api
 
-[importlinter:contract:training-and-api-are-independent]
+[importlinter:contract:training-api-independent]
 name = 训练与服务互不依赖
 type = independence
 modules =
