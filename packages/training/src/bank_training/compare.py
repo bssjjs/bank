@@ -17,7 +17,6 @@ import argparse
 import json
 from typing import Any
 
-import mlflow
 import numpy as np
 from bank import catalog
 from bank import schema as S
@@ -29,6 +28,7 @@ from bank_training import data as D
 from bank_training import metrics as M
 from bank_training import model_config as MC
 from bank_training import pipeline as P
+from bank_training.tracking import get_tracker
 
 CONTRACT = "compare_report.v1"
 FRACTIONS = (0.10, 0.15, 0.20)
@@ -36,7 +36,6 @@ OUT_DIR = S.ROOT / "data" / "processed"
 JSON_PATH = OUT_DIR / "compare.json"
 MD_PATH = OUT_DIR / "compare.md"
 EXPERIMENT = "bank-marketing"
-TRACKING_URI = f"sqlite:///{(S.ROOT / 'mlflow.db').as_posix()}"
 MODEL_NAME = "逻辑回归"
 RULE_NAME = "规则基线"
 
@@ -162,24 +161,23 @@ def render(rows: list[dict[str, Any]]) -> str:
 
 
 def _log(payload: dict[str, Any]) -> str:
+    tracker = get_tracker()
     """把这张表记成一个 mlflow run，方便和其他运行对上号。"""
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT)
-    with mlflow.start_run(run_name="c-l2c-compare") as run:
-        mlflow.log_params(
+    with tracker.start_run("c-l2c-compare") as run_id:
+        tracker.log_params(
             {
                 "fractions": ",".join(f"{fraction:.2f}" for fraction in FRACTIONS),
                 "model": MODEL_NAME,
                 "rule": RULE_NAME,
             }
         )
-        mlflow.set_tags({"git_sha": git_sha() or "", "contract": CONTRACT})
+        tracker.set_tags({"git_sha": git_sha() or "", "contract": CONTRACT})
         for row in payload["table"]:
             key = "f{:.0f}_{}".format(row["fraction"] * 100, row["method"])
-            mlflow.log_metric(f"tp_{key}", int(row["tp"]))
-            mlflow.log_metric(f"precision_{key}", float(row["precision"]))
-        mlflow.log_artifact(str(MD_PATH), artifact_path="compare")
-        return run.info.run_id
+            tracker.log_metric(f"tp_{key}", int(row["tp"]))
+            tracker.log_metric(f"precision_{key}", float(row["precision"]))
+        tracker.log_artifact(str(MD_PATH), artifact_path="compare")
+        return run_id
 
 
 def main(argv: list[str] | None = None) -> int:

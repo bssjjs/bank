@@ -1,0 +1,7 @@
+schema_version: 1
+# 追踪后端：`mlflow` 写入仓库根的 mlflow.db；`memory` 只活在进程里（测试用）。
+# 换后端只改这一个文件，编排层不用动（讲义 C-L1c）。
+tracking:
+  backend: mlflow
+  experiment: bank-marketing
+  tracking_uri: sqlite:///mlflow.db

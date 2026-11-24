@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 
-import mlflow
 import numpy as np
 import pandas as pd
 from bank import schema as S
@@ -26,7 +25,8 @@ from bank.config import load_config
 from bank_training.data import load_frozen, split_xy
 from bank_training.metrics import evaluate
 from bank_training.pipeline import build_model
-from bank_training.train import EXPERIMENT, OUT_DIR, TRACKING_URI
+from bank_training.tracking import get_tracker
+from bank_training.train import OUT_DIR
 
 E1 = "E1-通话时长泄漏"
 E2 = "E2-特征集A对B"
@@ -36,9 +36,10 @@ E5 = "E5-随机切分"
 
 
 def _log(name: str, params: dict[str, object], metrics: dict[str, float]) -> str:
-    with mlflow.start_run(run_name=name) as run:
-        mlflow.set_tags({"experiment": name})
-        mlflow.log_params(
+    tracker = get_tracker()
+    with tracker.start_run(name) as run_id:
+        tracker.set_tags({"experiment": name})
+        tracker.log_params(
             {
                 k: v
                 if isinstance(v, (str, int, float, bool))
@@ -46,7 +47,7 @@ def _log(name: str, params: dict[str, object], metrics: dict[str, float]) -> str
                 for k, v in params.items()
             }
         )
-        mlflow.log_metrics({k: float(v) for k, v in metrics.items()})
+        tracker.log_metrics({k: float(v) for k, v in metrics.items()})
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         path = OUT_DIR / f"exp-{name}.json"
         path.write_text(
@@ -56,8 +57,8 @@ def _log(name: str, params: dict[str, object], metrics: dict[str, float]) -> str
             + "\n",
             encoding="utf-8",
         )
-        mlflow.log_artifact(str(path))
-        return run.info.run_id
+        tracker.log_artifact(str(path))
+        return run_id
 
 
 def _fit_score(
@@ -72,8 +73,6 @@ def main() -> int:
     cfg = load_config()
     train, valid, manifest = load_frozen()
     quota_n = int(manifest["capacity"]["quota_n"])
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT)
     params = {"quota_n": quota_n, "n_valid": len(valid), "seed": cfg.seed}
     y_valid = valid[S.TARGET]
     spec = load_catalog()

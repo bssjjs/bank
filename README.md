@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 367 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 389 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -176,6 +176,22 @@
 
 注意 `rf` 这一组是**特征集 B** 的数，和 `docs/adr/0005-模型选择.md` 里特征集 A 的 0.6229/0.6024 不是同一组，别混用。
 
+## 追踪协议与两个后端：MLflow 只在一个文件里 import
+
+`python -m bank_training.train` 这类命令不再直接调 MLflow，而是走 `packages/training/src/bank_training/tracking/`
+里的 `Tracker` 协议（`start_run` / `log_params` / `set_tags` / `log_metrics` / `log_artifact` / `name`）。
+两个后端都按同名协议实现：`memory`（进程内，测试用）与 `mlflow`（落 `mlflow.db`），由 `configs/tracking.yaml`
+的 `tracking.backend` 选。
+
+- **只有 `tracking/mlflow_backend.py` 允许 `import mlflow`**，`tests/architecture/test_layers.py::TrackingTest`
+  用 AST 扫全仓库守着这条（`import-linter` 只管本仓库模块之间，管不到第三方库）。
+- 参数一律转字符串（MLflow 的参数本来就是字符串）：`bool` → `true`/`false`，集合排序后 `json.dumps`。
+- 换/加后端只写一个文件并 `@tracker("名字")` 登记，`available()` 会自动列出来；`configs/tracking.yaml` 选的
+  后端必须已登记（配置文件与注册表对不上会直接报错，不会静默回落到别的后端）。
+- `--no-mlflow` 仍然有效，含义是「这次不记」，与「换后端」是两件事。
+
+取舍见 `docs/adr/0021-追踪协议与两个后端.md`，步骤卡 `docs/steps/C-L1c.md`。
+
 ## 目录
 
 ```
@@ -183,7 +199,8 @@ packages/core       口径规则、数据管道、特征目录、冻结、模型
 packages/training   训练、评估、规则基线、单条解释（只依赖 core）
 packages/api        推理服务（只依赖 core）
 apps/web            前端（M6）
-configs/            base.yaml 口径数字；features.yaml 字段唯一出处（含禁用列）
+configs/            base.yaml 口径数字；features.yaml 字段唯一出处（含禁用列）；
+                    model.yaml 超参数；api.yaml 服务设置；watch.yaml 告警阈值；tracking.yaml 追踪后端
 data/raw|frozen|processed
 models/serving/     模型包，每版一个目录，不覆盖
 scripts/ci.py       五道门：ruff check / ruff format / mypy / lint-imports / pytest（覆盖率 85）
@@ -224,7 +241,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流、热加载与服务指标、告警渠道与定时检查） |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流、热加载与服务指标、告警渠道与定时检查、追踪协议与两个后端） |
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
 | `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |

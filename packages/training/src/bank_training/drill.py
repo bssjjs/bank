@@ -27,6 +27,7 @@ from bank import drift as D
 from bank import schema as S
 
 from bank_training.data import load_frozen
+from bank_training.tracking import get_tracker
 
 CONTRACT = "drill_report.v1"
 DRILL_SEED = 20261122
@@ -176,18 +177,13 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _log(checks: list[Check], rows: int) -> str | None:
-    try:
-        import mlflow
-    except ImportError:  # 没装 mlflow 也能跑演练
-        return None
-    mlflow.set_tracking_uri(f"sqlite:///{(S.ROOT / 'mlflow.db').as_posix()}")
-    mlflow.set_experiment(EXPERIMENT)
-    with mlflow.start_run(run_name="f7-drill") as run:
-        mlflow.log_params({"seed": DRILL_SEED, "rows": rows, "contract": CONTRACT})
+    tracker = get_tracker()
+    with tracker.start_run("f7-drill") as run_id:
+        tracker.log_params({"seed": DRILL_SEED, "rows": rows, "contract": CONTRACT})
         for index, check in enumerate(checks):
-            mlflow.log_metric(f"check_{index}", 1.0 if check.passed else 0.0)
-        mlflow.set_tag("stage", "drill")
-        return run.info.run_id
+            tracker.log_metric(f"check_{index}", 1.0 if check.passed else 0.0)
+        tracker.set_tag("stage", "drill")
+        return run_id
 
 
 def main(argv: list[str] | None = None) -> int:

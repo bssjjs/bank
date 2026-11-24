@@ -18,7 +18,6 @@ import math
 from datetime import datetime
 from typing import Any
 
-import mlflow
 import numpy as np
 from bank import bundle as B
 from bank import registry as REG
@@ -31,9 +30,9 @@ from bank_training.data import load_frozen, split_xy
 from bank_training.metrics import evaluate, threshold_metrics
 from bank_training.model_config import load_model_config
 from bank_training.pipeline import build_model
+from bank_training.tracking import get_tracker
 
 EXPERIMENT = "bank-marketing"
-TRACKING_URI = f"sqlite:///{(S.ROOT / 'mlflow.db').as_posix()}"
 MIN_FEATURES = 10
 GATE_AP = 0.50
 GATE_PRECISION = 0.60
@@ -91,6 +90,7 @@ def _gate(metrics: dict[str, float], n_features: int) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    tracker = get_tracker()
     parser = argparse.ArgumentParser(description="导出 ModelBundle")
     parser.add_argument("--version", default="1.0.0", help="版本号 x.y.z，默认 1.0.0")
     parser.add_argument(
@@ -148,12 +148,10 @@ def main(argv: list[str] | None = None) -> int:
         "n_features": len(feature_names),
     }
 
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT)
-    with mlflow.start_run(run_name=f"m4-bundle-{args.version}") as run:
-        run_id = run.info.run_id
+    with tracker.start_run(f"m4-bundle-{args.version}") as run_id:
+        run_id = run_id
         training["run_id"] = run_id
-        mlflow.set_tags(
+        tracker.set_tags(
             {
                 "stage": "bundle",
                 "version": args.version,
@@ -162,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
                 "config_fingerprint": training["config_fingerprint"][:16],
             }
         )
-        mlflow.log_params(
+        tracker.log_params(
             {
                 "version": args.version,
                 "model": mcfg.model.kind,
@@ -174,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
                 "quota_n": quota_n,
             }
         )
-        mlflow.log_metrics({key: float(value) for key, value in metrics.items()})
+        tracker.log_metrics({key: float(value) for key, value in metrics.items()})
 
         path = B.write_bundle(
             version=args.version,
@@ -193,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
             training=training,
             runtime=B.runtime_now(),
         )
-        mlflow.log_artifact(str(path / B.BUNDLE_JSON), artifact_path="bundle")
+        tracker.log_artifact(str(path / B.BUNDLE_JSON), artifact_path="bundle")
 
     registered = REG.register(
         args.version,

@@ -16,7 +16,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import mlflow
 import pandas as pd
 from bank import catalog
 from bank import drift as D
@@ -26,10 +25,10 @@ from bank.bundle import SERVING_DIR, load_bundle
 from bank_training.data import load_frozen
 from bank_training.model_config import load_model_config
 from bank_training.pipeline import build_model
+from bank_training.tracking import get_tracker
 
 OUT_JSON = S.ROOT / "data" / "processed" / "drift.json"
 EXPERIMENT = "bank-marketing"
-TRACKING_URI = f"sqlite:///{(S.ROOT / 'mlflow.db').as_posix()}"
 NUMERIC = ("numeric", "time", "date", "id")
 
 
@@ -91,10 +90,9 @@ def run(current_path: Path | None = None) -> dict[str, Any]:
 
 
 def _log(result: dict[str, Any]) -> str:
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT)
-    with mlflow.start_run(run_name="m7-drift") as run_obj:
-        mlflow.log_params(
+    tracker = get_tracker()
+    with tracker.start_run("m7-drift") as run_id:
+        tracker.log_params(
             {
                 "reference": result["reference"],
                 "current": result["current"],
@@ -110,9 +108,9 @@ def _log(result: dict[str, Any]) -> str:
         metrics["label_reference_rate"] = float(result["label"]["reference_rate"])
         if result["label"]["current_rate"] is not None:
             metrics["label_current_rate"] = float(result["label"]["current_rate"])
-        mlflow.log_metrics(metrics)
-        mlflow.log_artifact(str(OUT_JSON))
-        return str(run_obj.info.run_id)
+        tracker.log_metrics(metrics)
+        tracker.log_artifact(str(OUT_JSON))
+        return run_id
 
 
 def summarize(result: dict[str, Any], run_id: str | None = None) -> None:

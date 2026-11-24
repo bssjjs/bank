@@ -29,6 +29,7 @@ from bank_training.data import load_frozen, split_xy
 from bank_training.metrics import evaluate
 from bank_training.model_config import load_model_config
 from bank_training.pipeline import build_model
+from bank_training.tracking import get_tracker
 
 CONTRACT = "tune_report.v1"
 INNER_CUT = "2009-04-01"
@@ -104,27 +105,22 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _log(rows: list[dict[str, Any]], chosen: dict[str, Any], fit_rows: int) -> list[str]:
-    try:
-        import mlflow
-    except ImportError:
-        return []
-    mlflow.set_tracking_uri(f"sqlite:///{(S.ROOT / 'mlflow.db').as_posix()}")
-    mlflow.set_experiment(EXPERIMENT)
+    tracker = get_tracker()
     ids: list[str] = []
     for row in rows:
-        with mlflow.start_run(run_name=f"c-l3b-tune-c{row['c']}") as run:
-            mlflow.log_params(
+        with tracker.start_run(f"c-l3b-tune-c{row['c']}") as run_id:
+            tracker.log_params(
                 {"c": row["c"], "inner_cut": INNER_CUT, "n_fit": fit_rows, "contract": CONTRACT}
             )
-            mlflow.log_metrics(
+            tracker.log_metrics(
                 {
                     "ap": float(row["ap"]),
                     "roc_auc": float(row["roc_auc"]),
                     "precision_at_quota": float(row["precision_at_quota"]),
                 }
             )
-            mlflow.set_tag("stage", "tune")
-            ids.append(run.info.run_id)
+            tracker.set_tag("stage", "tune")
+            ids.append(run_id)
     return ids
 
 

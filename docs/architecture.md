@@ -37,6 +37,7 @@
 | 清洗规则带命中行数 | 注册表 `REGISTRY` 7 条规则，逐条计 `rows`，致命/记账分开 | `clean.py` + `rules.py` | `docs/spec.md` §7 | `python -m bank.freeze` |
 | 时间切分与缓冲 | 月份→日期重建、`<cut` 训练 / `≥cut` 验证、缓冲落月份边界 | `timeaxis.py` + `split.py` | ADR 0002 | `tests/unit/test_freeze.py` |
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
+| 追踪协议与两个后端（讲义 C-L1c） | `Tracker` 协议 + `TRACKERS` 注册表；`memory`/`mlflow` 两个实现；**只有 `tracking/mlflow_backend.py` 能 import mlflow**，由 AST 架构测试守着；后端与实验名进 `configs/tracking.yaml` | `packages/training/src/bank_training/tracking/` | ADR 0021 | `pytest tests/unit/test_tracking.py tests/architecture/test_layers.py` |
 | 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
 | 模型包的运行时血统与版本闸门（讲义 D-L1） | `bundle.json` 带 `runtime`（python/sklearn/pandas/numpy）；加载前比对 sklearn 主次版本与 Python 主版本，不一致拒绝加载 | `bundle.py` | ADR 0020 | `python -m bank_training.export --version 1.0.0` |
 | 新增算法只加一个文件（讲义 C-L2b） | `algorithms/` 一文件一算法 + `@algorithm` 登记 + 惰性 import；`parity` 冻结四项指标与逐条分数指纹，容差 1e-6、人数必须相等 | `algorithms/__init__.py` / `algorithms/linear.py` / `algorithms/forest.py` / `parity.py` | ADR 0019 | `python -m bank_training.parity --check` |

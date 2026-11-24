@@ -90,5 +90,30 @@ class QualityGateTest(unittest.TestCase):
         self.assertIn("type = independence", text)
 
 
+class TrackingTest(unittest.TestCase):
+    """追踪协议（讲义 C-L1c）：MLflow 只许出现在适配文件里，后端各有实现。"""
+
+    def test_only_the_adapter_imports_mlflow(self) -> None:
+        allowed = TRAINING / "tracking" / "mlflow_backend.py"
+        offenders = []
+        for path in PKGS.rglob("*.py"):
+            if path == allowed:
+                continue
+            if "mlflow" in imported_roots(path):
+                offenders.append(str(path.relative_to(ROOT)))
+        self.assertEqual(offenders, [], "只有 tracking/mlflow_backend.py 能 import mlflow")
+
+    def test_two_backends_are_registered(self) -> None:
+        from bank_training.tracking import available
+
+        self.assertEqual(available(), ("memory", "mlflow"))
+
+    def test_config_picks_a_registered_backend(self) -> None:
+        from bank_training.tracking import available
+        from bank_training.tracking.base import load_tracking_config
+
+        self.assertIn(load_tracking_config().backend, available())
+
+
 if __name__ == "__main__":
     unittest.main()

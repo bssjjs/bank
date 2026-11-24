@@ -7,7 +7,7 @@
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。服务层还有 `store.py`（按 `current.json` 热加载模型包）与 `service_metrics.py`（`service_metrics.v1` 计数）。`tests/` 有 367 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/tracking/` 是追踪层：`base.py` 定义 `Tracker` 协议与注册表，`memory.py` / `mlflow_backend.py` 是两后端（**只有 `mlflow_backend.py` 能 import mlflow**，架构测试用 AST 扫着），`configs/tracking.yaml` 选后端。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。服务层还有 `store.py`（按 `current.json` 热加载模型包）与 `service_metrics.py`（`service_metrics.v1` 计数）。`tests/` 有 389 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
 - 前端**还不存在**，别假设它存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
 
 ### 五个人的角色
@@ -52,12 +52,12 @@
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - `bank.reconcile` 是对账点 1：**不读冻结的 parquet**，直接从原始库重切一遍，再和 `data/frozen/manifest.json` 的账单逐项比（源文件指纹、配置指纹、原始行数/正例/列清单、窗口、两表行数/正例/内容指纹/日期范围、名额、特征数、目录一致性）。必须打印「对账通过：从原始库重建的两表与冻结账单逐项一致」，退出码 0；任何一项不一致就退出 1，且不回写冻结数据。它和 `--check` 不同：`--check` 比「今天重跑 vs 冻结」，`reconcile` 比「账单 vs 重建」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（367 项），按目录分：unit 235 / contract 20 / service 23 / architecture 37 / exam 52。
-  - unit 235：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 17（含 5 项运行时版本闸门）、漂移 11、对账 7、版本注册表 10、预测记录 12、标签回流 10、模型 vs 规则 8、告警与定时检查 33。
+- `pytest tests` 必须全过（389 项），按目录分：unit 254 / contract 20 / service 23 / architecture 40 / exam 52。
+  - unit 254：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 17（含 5 项运行时版本闸门）、漂移 11、对账 7、版本注册表 10、预测记录 12、标签回流 10、模型 vs 规则 8、告警与定时检查 33、追踪协议与两个后端 19。
   - contract 20：OpenAPI 的必填/范围/枚举/批量上限与模型包对账（6）；算法注册表与一致性参照（14，含注册表自检、两次训练逐位相同、`parity --check`、容差与人数判据）。
   - service 23：探针、字段级 422（含 NaN 不许炸）、批量上限、预测记录、无包时 503（干净检出时 `tests/support.py` 会先导出一个模型包）；另有热加载 4（指针换版本、坏指针保留旧模型、固定包关掉热加载）与服务指标 6（计数、延迟、等级、422 不计预测、不泄露特征值）。
   - unit 里另有故障演练 7（注入确定性与五项检查）与调参 6（内层切分边界、切点越界、选最大 AP）。
-  - architecture 37：依赖方向与包布局 10、质量门守门 15、基线封条 8、回放 tag 4。
+  - architecture 40：依赖方向与包布局 10、质量门守门 15、基线封条 8、回放 tag 4、追踪层三条（只有适配文件能 import mlflow、两个后端登记、配置选的后端必须已登记）。
   - exam 52：配置 18、目录 16、指纹 18，是人写的考卷，智能体只读、不许改题目。
 - `scripts/ci.py` 是交付前最后一关：五道门（ruff check、ruff format --check、mypy、lint-imports、pytest）必须全绿，末行打印「质量门：全绿」。任何一道红都不算完成。
 - 交付时贴命令与输出的最后几行原文；没跑过的命令不写进文档，没跑出来的数字不进报告。
@@ -94,7 +94,8 @@
 packages/core|training|api   三包：core 谁都不依赖，training 与 api 互不依赖
 apps/web                     前端目录（M6 暂缓，技术栈待定，ADR 待写）
 configs/                     base.yaml 放口径数字；features.yaml 是字段唯一出处（含禁用列）；
-                             model.yaml 放超参数；api.yaml 放服务设置；watch.yaml 放告警阈值与渠道
+                             model.yaml 放超参数；api.yaml 放服务设置；watch.yaml 放告警阈值与渠道；
+                             tracking.yaml 放追踪后端与实验名
 data/raw|frozen|processed    raw 只读入口、processed 是产物、frozen 冻结后进 Git
 models/serving/              模型包，每版一个目录，不覆盖
 scripts/                     ci.py 质量门；freeze_baseline.py 基线封条；replay_steps.py 按 tag 回放
