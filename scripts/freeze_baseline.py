@@ -65,6 +65,7 @@ def _copy_sources() -> list[str]:
 
     for source, name in (
         (PROCESSED / "experiments.json", "experiments.json"),
+        (PROCESSED / "algorithm_parity.json", "algorithm_parity.json"),
         (FROZEN / "FROZEN.json", "frozen.json"),
     ):
         if not source.is_file():

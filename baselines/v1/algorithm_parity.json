@@ -1,0 +1,32 @@
+{
+  "algorithms": {
+    "lr": {
+      "ap": 0.649808,
+      "n": 3556,
+      "n_selected": 356,
+      "positives": 1782,
+      "precision_at_quota": 0.741573,
+      "quota_n": 356,
+      "recall_at_quota": 0.148148,
+      "roc_auc": 0.643812,
+      "scores_sha256": "5a9d3aa176374832d24be2a3af87b99fd95d93ea9f3a804fa6800112605c7476"
+    },
+    "rf": {
+      "ap": 0.645537,
+      "n": 3556,
+      "n_selected": 356,
+      "positives": 1782,
+      "precision_at_quota": 0.764045,
+      "quota_n": 356,
+      "recall_at_quota": 0.152637,
+      "roc_auc": 0.642711,
+      "scores_sha256": "35b3be982a1101d7f652dae834b9c591bf83a6eb95ddf9758ad0941689ffca84"
+    }
+  },
+  "c": 1.0,
+  "contract": "algorithm_parity.v1",
+  "data_fingerprint_train": "03832a965af75565",
+  "feature_set": "B",
+  "max_iter": 5000,
+  "seed": 42
+}

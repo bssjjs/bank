@@ -38,10 +38,12 @@
 | 时间切分与缓冲 | 月份→日期重建、`<cut` 训练 / `≥cut` 验证、缓冲落月份边界 | `timeaxis.py` + `split.py` | ADR 0002 | `tests/unit/test_freeze.py` |
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
 | 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
+| 新增算法只加一个文件（讲义 C-L2b） | `algorithms/` 一文件一算法 + `@algorithm` 登记 + 惰性 import；`parity` 冻结四项指标与逐条分数指纹，容差 1e-6、人数必须相等 | `algorithms/__init__.py` / `algorithms/linear.py` / `algorithms/forest.py` / `parity.py` | ADR 0019 | `python -m bank_training.parity --check` |
+| 模型比规则强多少、名额要不要放宽（讲义 C-L2c） | 同一验证集、规则权不调、名额当自变量；10/15/20% 三档各算抓中人数，结论如实写 | `compare.py` | ADR 0017 | `python -m bank_training.compare` |
 | 校准与切片（讲义 C-L3a） | 10 箱可靠性表 + 五张切片表；名额按切片人数比例分配、少于 100 人不报；校准只报告不拟合 | `calibration.py` / `slices.py` / `report.py` | ADR 0012 | `python -m bank_training.train` |
 | 注册表、门禁与审计（讲义 D-L2 / D-L3） | 四状态迁移表、门禁先行、审计先行（`fsync`）、`aliases.production` 回退只改指针、封存集规则就位但不切 | `registry.py` / `export.py` | ADR 0013 | `python -m bank.registry show` |
 | 故障演练与调参（讲义 F7 / C-L3b） | 注入已知漂移后监控必须响、没动的列不许误报、自适应分箱被反证；调参只在训练期内层时间窗里做，切点越界直接抛错 | `drill.py` / `tune.py` | ADR 0016 | `python -m bank_training.drill` / `tune` |
-| 服务热加载与指标（讲义 E-L2） | `packages/api/src/bank_api/store.py`、`service_metrics.py` | `GET /metrics`、`docs/cards/E-L2-服务.md`、ADR 0015 |
+| 服务热加载与指标（讲义 E-L2） | 每请求比对 `current.json` 文本，变了才整包重载；坏包保留旧版本并计数；`/metrics` 出计数、延迟、级别分布 | `store.py` / `service_metrics.py` / `app.py` | `docs/cards/E-L2-服务.md`、ADR 0015 | `GET /metrics` |
 | 预测记录 v2、对照组与回流（讲义 F-L2） | 记录带契约号、输入只留 `features_hash`、对照组按 request_id 哈希确定性抽 10%、标签只认对得上号的、对照组不进重训 | `predictions.py` / `app.py` / `backfill.py` | ADR 0014 | `python -m bank_training.backfill --labels ...` |
 | 对账点 1（独立于冻结产物） | 从原始库内存重算 → 与 `manifest.json` 逐项比 22 项，不一致退出 1，不写盘 | `reconcile.py` | ADR 0010 | `python -m bank.reconcile` |
 | 两条基线 | 规则加权打分 + 逻辑回归，同一验证集同一名额 | `baselines.py` + `train.py` | `docs/model_card.md` | `python -m bank_training.train` |

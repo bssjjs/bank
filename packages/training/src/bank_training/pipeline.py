@@ -1,19 +1,18 @@
-"""模型装配：把 core 的预处理器和具体分类器拼成一条 Pipeline。
+"""模型装配：预处理 + 算法的入口；算法本身在 `bank_training.algorithms` 里，一种一个文件。
 
-预处理器（填补、编码、标准化、有序映射）在 `bank.features`，训练与服务共用；
-这里只管「用哪个模型」。`lr` 是主模型；`rf` 只做对照，不上线。
+预处理器（填补、编码、标准化、有序映射）在 `bank.features`，训练与服务共用；这里只做分发。
+`lr` 是主模型；`rf` 只做对照，不上线。
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
-from bank import schema as S
 from bank.catalog import CatalogSpec
 from bank.features import NUMERIC_TYPES, OrderedEncoder, build_preprocessor, order_for
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+
+from bank_training import algorithms
 
 __all__ = [
     "MODEL_KINDS",
@@ -35,36 +34,5 @@ def build_model(
     c: float = 1.0,
     max_iter: int = 5000,
 ) -> Pipeline:
-    """`lr` 是主模型；`rf` 只做对照，不上线。"""
-    if kind == "lr":
-        return Pipeline(
-            [
-                ("pre", build_preprocessor(spec, feature_names)),
-                (
-                    "model",
-                    LogisticRegression(
-                        C=c,
-                        max_iter=max_iter,
-                        random_state=S.SEED,
-                        solver="lbfgs",
-                    ),
-                ),
-            ]
-        )
-    if kind == "rf":
-        return Pipeline(
-            [
-                ("pre", build_preprocessor(spec, feature_names, dense=True)),
-                (
-                    "model",
-                    RandomForestClassifier(
-                        n_estimators=300,
-                        min_samples_leaf=20,
-                        max_features="sqrt",
-                        n_jobs=1,
-                        random_state=S.SEED,
-                    ),
-                ),
-            ]
-        )
-    raise ValueError(f"未知模型类型 {kind!r}，只能从 {MODEL_KINDS} 里选")
+    """`lr` 是主模型；`rf` 只做对照，不上线。可用名字以注册表为准（`MODEL_KINDS` 是它的快照）。"""
+    return algorithms.build(kind, spec, feature_names, c=c, max_iter=max_iter)

@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 347 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 361 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -149,6 +149,31 @@
 | 20% | 711 | 537 | 0.7553 | 0.3013 | 550 | 0.7736 |
 
 两句话必须如实说：**模型在这份验证集上没有比规则多抓人**（少 8 / 4 / 13 人，都在一个标准误以内）；**名额从 10% 放到 20%，精确率几乎不动（0.7416→0.7553），召回翻倍（0.1481→0.3013）**。模型真正的优势在概率校准（Brier 0.2852 vs 0.4924）。理由与取舍写进 `docs/adr/0017-模型与规则的名额取舍.md`，输出 `data/processed/compare.{md,json}`。
+
+## 算法注册表与一致性（C-L2b）
+
+想加一种算法，只加一个文件：`packages/training/src/bank_training/algorithms/<名字>.py`，
+用 `@algorithm("<短名>")` 登记，函数体返回一条 `Pipeline`（预处理必须复用
+`bank.features.build_preprocessor`，否则训练与服务走的不是同一条路）。
+`configs/model.yaml` 的 `kind` 改成按注册表校验，加算法不用改枚举。
+
+```powershell
+.venv\Scripts\python.exe -m bank_training.parity --write   # 重算参照（改了算法或数据才用）
+.venv\Scripts\python.exe -m bank_training.parity --check   # 与 baselines/v1/algorithm_parity.json 比
+```
+
+`--check` 判两件事：四项指标（AP / ROC-AUC / 名额内精确率 / 名额内召回）在 `1e-6` 内一致，
+以及**逐条分数指纹**一致（指标相同但挑的不是同一批人，也算变了），人数必须完全相等。
+参照文件由 `scripts/freeze_baseline.py` 一起封存。
+
+当前参照（冻结集验证集 3,556 行、名额 356、特征集 B、C=1.0）：
+
+| 算法 | AP | ROC-AUC | 名额内精确率 | 名额内召回 | 抓中人数 |
+| --- | --- | --- | --- | --- | --- |
+| `lr`（主模型） | 0.649808 | 0.643812 | 0.741573 | 0.148148 | 264 |
+| `rf` | 0.645537 | 0.642711 | 0.764045 | 0.152637 | 272 |
+
+注意 `rf` 这一组是**特征集 B** 的数，和 `docs/adr/0005-模型选择.md` 里特征集 A 的 0.6229/0.6024 不是同一组，别混用。
 
 ## 目录
 
