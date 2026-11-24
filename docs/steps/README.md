@@ -7,4 +7,7 @@
   内容对照实际提交与当时的测试数，不是事后编的目标。
 - 质量门（`scripts/ci.py`）诞生于 `step-M8`。M1、M2 两步早于它，所以没有对应 tag：
   当时只有 `unittest discover`，硬打 tag 会假装"每一步都能过质量门"。**如实记录比整齐重要。**
+- 讲义步（C-L2a 评估报全、C-L3a 校准与切片、D-L2 注册表与审计、E-L2 热加载与指标、
+  F-L2 预测记录与回流、F7-C-L3b 演练与调参）都有 tag，回放同样覆盖：这些步的提交里
+  `scripts/ci.py` 已存在，能独立过门。
 - 回放：`python scripts/replay_steps.py` 会对每个 `step-*` tag 建独立工作目录，装环境、跑质量门。

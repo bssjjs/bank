@@ -99,7 +99,7 @@ tests/unit|contract|architecture|service|exam
 docs/                        problem/spec/data_card/pitfalls/architecture/model_card
 docs/adr/                    决策记录，0001 起编号，一份一个决定
 docs/modules/                模块卡：目标 / 验收 / 不做
-docs/steps/                  步骤卡：每步三行（目标/验收/不做），文件名对应 tag
+docs/steps/                  步骤卡：每步三行（目标/验收/不做），文件名对应 tag（含讲义步 C-L2a/F-L2 等）
 docs/cards/                  组件卡：指纹 / 配置 / 特征目录，每张九节
 ```
 

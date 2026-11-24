@@ -74,13 +74,21 @@ def _seed_data(worktree: Path) -> str | None:
 
 
 def _prep_commands(worktree: Path) -> list[list[str]]:
-    """这个 tag 自己有的重建命令：先冻结，再导出模型包（没有这步代码就跳过）。"""
+    """这个 tag 自己有的重建命令：先冻结，再导出模型包（没有这步代码就跳过）。
+
+    `--promote` 是注册表上线之后才有的参数：旧 tag 的 `export.py` 不认它，
+    所以先读那个 tag 里的文件，看到 `--promote` 才加——回放不能拿今天的命令行套昨天的代码。
+    """
     py = str(_python(worktree))
     commands: list[list[str]] = []
     if (worktree / "packages" / "core" / "src" / "bank" / "freeze.py").is_file():
         commands.append([py, "-m", "bank.freeze"])
-    if (worktree / "packages" / "training" / "src" / "bank_training" / "export.py").is_file():
-        commands.append([py, "-m", "bank_training.export", "--version", "1.0.0", "--promote"])
+    export = worktree / "packages" / "training" / "src" / "bank_training" / "export.py"
+    if export.is_file():
+        command = [py, "-m", "bank_training.export", "--version", "1.0.0"]
+        if "--promote" in export.read_text(encoding="utf-8"):
+            command.append("--promote")
+        commands.append(command)
     return commands
 
 

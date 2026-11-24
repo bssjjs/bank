@@ -27,6 +27,19 @@ def step_tags() -> list[str]:
     return sorted(line.strip() for line in git("tag", "-l", "step-*").stdout.splitlines() if line)
 
 
+def docs_root() -> Path:
+    """步骤卡看**主工作区**，不看当前工作目录。
+
+    回放时每个 tag 在独立 worktree 里跑质量门，那里的 `docs/steps/` 是那个 tag 当年的样子；
+    步骤卡是后来回写的（见 `docs/steps/README.md`），所以"这张卡有没有"要在主工作区判断，
+    否则回放越老越红，红的原因还跟代码无关。
+    """
+    common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common.returncode == 0 and common.stdout.strip():
+        return Path(common.stdout.strip()).parent / "docs" / "steps"
+    return ROOT / "docs" / "steps"
+
+
 class ReplayableTagsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tags = step_tags()
@@ -45,11 +58,10 @@ class ReplayableTagsTest(unittest.TestCase):
             self.assertEqual(merged.returncode, 0, f"{tag} 不在当前历史里")
 
     def test_every_tag_has_step_doc(self) -> None:
+        root = docs_root()
         for tag in self.tags:
             name = tag.removeprefix("step-")
-            self.assertTrue(
-                (ROOT / "docs" / "steps" / f"{name}.md").is_file(), f"缺 docs/steps/{name}.md"
-            )
+            self.assertTrue((root / f"{name}.md").is_file(), f"缺 docs/steps/{name}.md")
 
 
 if __name__ == "__main__":
