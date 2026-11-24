@@ -56,10 +56,12 @@ class OpenApiContractTest(unittest.TestCase):
     def test_required_routes_exist(self) -> None:
         paths = set(self.doc["paths"])
         self.assertEqual(
-            paths, {"/health", "/ready", "/v1/model", "/v1/predict", "/v1/predict/batch"}
+            paths,
+            {"/health", "/ready", "/v1/model", "/metrics", "/v1/predict", "/v1/predict/batch"},
         )
         self.assertIn("get", self.doc["paths"]["/health"])
         self.assertIn("get", self.doc["paths"]["/ready"])
+        self.assertIn("get", self.doc["paths"]["/metrics"])
 
 
 if __name__ == "__main__":

@@ -38,8 +38,9 @@
 # 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
 .venv\Scripts\python.exe -m bank_training.drift
 .venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
+.venv\Scripts\python.exe -m bank_api          # 起服务；换模型只改 current.json，不用重启
 
-# 10) 测试与质量门（交付前最后一关；pytest 240 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 292 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -100,7 +101,9 @@
 | `POST /v1/predict` | 单条预测 | 返回分数、等级、主要因素、用途提示；越界/枚举/缺字段都是 422 且 `loc` 指出字段 |
 | `POST /v1/predict/batch` | 批量预测 | 上限 100 条（`configs/api.yaml`），整批共用一个请求号 |
 
-每条预测追加一行到 `data/processed/predictions.jsonl`（`ts/request_id/model_version/score/level/control`，不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
+每条预测追加一行到 `data/processed/predictions.jsonl`（`prediction_record.v2`：`ts/request_id/model_version/score/level/control/features_hash/quota_frac/quota_n`，只留输入指纹、不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
+
+热加载与指标：服务每个请求只读一次 `models/serving/current.json` 的文本，指针变了就整包重载，**不重启进程**；坏包/坏指针保留旧模型并记 `reload_failures`，指针修好自动恢复。`GET /metrics` 给 `service_metrics.v1`（请求数、`by_route`/`by_status`、预测数、`by_level`、平均/最大延迟、`model`、`reload`）。现场验证：起服务后另开窗口跑 `python -m bank_training.export --version 1.2.0 --promote`，再 `curl /ready`，版本已变、进程没重启。取舍见 `docs/adr/0015-热加载与服务指标.md`，服务卡 `docs/cards/E-L2-服务.md`。
 
 漂移监控（`python -m bank_training.drift`，基准=训练集 17,537 行，对照=验证集 3,556 行扮演「线上」批次）：
 
@@ -153,7 +156,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流） |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流、热加载与服务指标） |
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
 | `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |

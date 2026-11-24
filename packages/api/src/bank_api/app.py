@@ -1,25 +1,27 @@
 """M5 推理服务：只读模型包，不 import 训练代码。
 
-三个约定：
+四个约定：
 1. 请求体字段由模型包生成（`schemas.build_input_model`），越界/枚举错由 pydantic 拦，
    统一转成 FastAPI 的 422，`detail[].loc` 精确指到字段名；
 2. 打分与解释都走 `bundle.score` / `bundle.explain`，与导出时同一条代码路径；
 3. 每条预测追加写一行 jsonl（`bank.predictions` 的 v2 记录：时间、契约、请求号、模型版本、
-   分数、等级、是否对照、输入指纹、名额口径），不写客户特征值——输入只留 sha256。
+   分数、等级、是否对照、输入指纹、名额口径），不写客户特征值——输入只留 sha256；
+4. 模型包热加载（`bank_api.store.BundleStore`）：`current.json` 变了就换，不重启；
+   `GET /metrics` 给请求计数、延迟与预测分布（`service_metrics.v1`）。
 """
 
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import uvicorn
-from bank import bundle as B
 from bank import predictions as P
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -31,9 +33,10 @@ from bank_api.schemas import (
     BatchResult,
     Factor,
     Prediction,
-    build_input_model,
     to_frame,
 )
+from bank_api.service_metrics import Counters
+from bank_api.store import BundleStore
 
 _LOCK = threading.Lock()
 
@@ -92,41 +95,45 @@ def create_app(
     bundle_path: Path | None = None,
     log_path: Path | None = None,
     config_path: Path | None = None,
+    serving_dir: Path | None = None,
 ) -> FastAPI:
-    """建服务。模型包加载失败不崩，`/health` 照常 200，`/ready` 与预测接口返回 503。"""
+    """建服务。模型包加载失败不崩，`/health` 照常 200，`/ready` 与预测接口返回 503。
+
+    `bundle_path` 指到某个版本目录时关掉热加载（离线/测试用）；`serving_dir` 指到
+    另一个 `models/serving` 目录时仍按 `current.json` 热加载（测试热替换用）。
+    """
     config: ApiConfig = load_api_config(config_path) if config_path else load_api_config()
     log_file = log_path or config.log_path
 
-    state: dict[str, Any] = {"bundle": None, "error": None, "input_model": None}
-    try:
-        bundle = B.load_bundle(bundle_path or B.SERVING_DIR)
-        state["bundle"] = bundle
-        state["input_model"] = build_input_model(bundle)
-    except Exception as error:  # 启动时没包也能起来，方便 /health 与部署探针
-        state["error"] = f"{type(error).__name__}: {error}"
-        state["input_model"] = None
+    fixed = bundle_path is not None
+    store = BundleStore(bundle_path or serving_dir, fixed=fixed)
+    store.load()  # 失败也不崩：之后每次请求会靠 refresh() 自愈
+    counters = Counters()
+    loaded = store.current()
+    initial_model: type[BaseModel] = loaded[1] if loaded is not None else BaseModel
 
     app = _ApiApp(
         title="银行电话营销 · 外呼排序服务",
         version="1.0.0",
-        input_model=state["input_model"] or BaseModel,
+        input_model=initial_model,
         batch_limit=config.serving.batch_limit,
     )
 
     def not_ready() -> JSONResponse:
-        return JSONResponse(
-            status_code=503,
-            content={"detail": f"模型包未就绪：{state['error']}"},
+        stats = store.stats()
+        detail = (
+            stats["last_reload_error"] or "模型包还没发布（models/serving/current.json 不存在）"
         )
+        return JSONResponse(status_code=503, content={"detail": f"模型包未就绪：{detail}"})
 
     def request_id() -> str:
         return f"{config.serving.request_id_prefix}-{uuid.uuid4().hex[:12]}"
 
     def predict_one(payload: dict[str, Any], rid: str, control: bool | None) -> Prediction:
-        bundle = state["bundle"]
-        if bundle is None:
+        current = store.current()
+        if current is None:
             raise RuntimeError("模型包未就绪")
-        model = state["input_model"]
+        bundle, model = current
         try:
             data = model(**payload)
         except ValidationError as error:
@@ -151,7 +158,15 @@ def create_app(
                 quota_n=decision.quota_n,
             ),
         )
-        factors = [Factor(**item) for item in bundle.explain(frame)]
+        counters.count_prediction(level)
+        factors = [
+            Factor(
+                feature=str(item["feature"]),
+                value=None if item.get("value") is None else str(item["value"]),
+                contribution=float(str(item["contribution"])),
+            )
+            for item in bundle.explain(frame)
+        ]
         return Prediction(
             request_id=rid,
             model_version=bundle.version,
@@ -161,34 +176,58 @@ def create_app(
             advice=LEVEL_ADVICE[level],
         )
 
+    @app.middleware("http")
+    async def observe(request: Request, call_next: Any) -> Any:
+        # 先试热加载再服务：指针没变时只是一次小文件读
+        store.refresh()
+        started = time.perf_counter()
+        response = await call_next(request)
+        elapsed = (time.perf_counter() - started) * 1000
+        counters.observe(route=request.url.path, status=response.status_code, latency_ms=elapsed)
+        return response
+
     @app.get("/health", summary="存活探针：进程起来了就 200")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "bank-api"}
 
     @app.get("/ready", summary="就绪探针：模型包读得回来才 200")
     def ready() -> Any:
-        if state["bundle"] is None:
+        current = store.current()
+        if current is None:
             return not_ready()
-        return {"status": "ready", "model_version": state["bundle"].version}
+        return {"status": "ready", "model_version": current[0].version}
 
     @app.get("/v1/model", summary="模型信息：前端靠它生成表单")
     def model_info() -> Any:
-        if state["bundle"] is None:
+        current = store.current()
+        if current is None:
             return not_ready()
-        return state["bundle"].describe()
+        return current[0].describe()
+
+    @app.get("/metrics", summary="服务指标：请求计数、延迟、预测分布")
+    def service_metrics() -> dict[str, Any]:
+        current = store.current()
+        body: dict[str, Any] = counters.snapshot()
+        body["model"] = {
+            "version": current[0].version if current else None,
+            "available": current is not None,
+        }
+        body["reload"] = store.stats()
+        return body
 
     @app.post("/v1/predict", response_model=Prediction, summary="单条预测")
     def predict(
         payload: dict[str, Any],
         control: bool | None = Query(None, description="对照组标记；不填按 10% 哈希抽样自动判定"),
     ) -> Any:
-        if state["bundle"] is None:
+        if store.current() is None:
             return not_ready()
         return predict_one(payload, request_id(), control)
 
     @app.post("/v1/predict/batch", response_model=BatchResult, summary="批量预测")
     def predict_batch(items: list[dict[str, Any]]) -> Any:
-        if state["bundle"] is None:
+        current = store.current()
+        if current is None:
             return not_ready()
         if not items:
             raise RequestValidationError(
@@ -208,7 +247,7 @@ def create_app(
         # 一个批次一个请求号：对照组标记按批次算，同一批里的条目共用一个标记
         flag = P.is_control(rid)
         return BatchResult(
-            model_version=state["bundle"].version,
+            model_version=current[0].version,
             request_id=rid,
             items=[predict_one(item, rid, flag) for item in items],
         )
