@@ -80,7 +80,7 @@ def _prep_commands(worktree: Path) -> list[list[str]]:
     if (worktree / "packages" / "core" / "src" / "bank" / "freeze.py").is_file():
         commands.append([py, "-m", "bank.freeze"])
     if (worktree / "packages" / "training" / "src" / "bank_training" / "export.py").is_file():
-        commands.append([py, "-m", "bank_training.export", "--version", "1.0.0"])
+        commands.append([py, "-m", "bank_training.export", "--version", "1.0.0", "--promote"])
     return commands
 
 

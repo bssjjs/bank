@@ -26,8 +26,11 @@
 # 6) 对照实验 E1–E5（泄漏列、A/B 特征集、未知填众数、pdays 原列、随机切分）
 .venv\Scripts\python.exe -m bank_training.experiments
 
-# 7) 导出模型包：models/serving/<版本>/ + current.json（不覆盖旧版本）
+# 7) 导出模型包：models/serving/<版本>/（不覆盖旧版本），登记进注册表但停在 candidate
 .venv\Scripts\python.exe -m bank_training.export --version 1.0.0
+# 8) 发布：门禁过了才动线上指针；回退是同一个命令换个版本号
+.venv\Scripts\python.exe -m bank.registry promote 1.0.0 --reason "首版上线"
+.venv\Scripts\python.exe -m bank.registry show
 
 # 8) 起服务：另一窗口执行，/docs 可打开，127.0.0.1:8000
 .venv\Scripts\python.exe -m bank_api
@@ -83,6 +86,8 @@
 | 回退 | 改 `models/serving/current.json` 指回旧版本，不删目录 |
 
 设计取舍见 `docs/adr/0006-模型包与发布.md`。模型包 `models/` 不进 Git，每台机器用一条命令重新导出。
+
+注册表（`models/serving/registry.json` + `audit.jsonl` + `current.json`）：导出只登记为 `candidate`，`promote` 前先查门禁（没过一步都不动），状态变化前先写一行审计并 `fsync`。回退 `rollback <旧版本> --reason "..."` 只改指针，旧版本目录还在。四个状态与迁移表见 `docs/adr/0013-注册表门禁与审计.md`。
 
 服务接口（`python -m bank_api` 起服务）：
 
@@ -147,7 +152,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流） |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计） |
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
 | `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |

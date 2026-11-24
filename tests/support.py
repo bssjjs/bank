@@ -22,7 +22,7 @@ def ensure_served_bundle(version: str = "1.0.0") -> None:
     if (B.SERVING_DIR / version / "bundle.json").is_file():
         return
     result = subprocess.run(
-        [sys.executable, "-m", "bank_training.export", "--version", version],
+        [sys.executable, "-m", "bank_training.export", "--version", version, "--promote"],
         cwd=S.ROOT,
         capture_output=True,
         text=True,

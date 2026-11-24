@@ -39,6 +39,7 @@
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
 | 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
 | 校准与切片（讲义 C-L3a） | 10 箱可靠性表 + 五张切片表；名额按切片人数比例分配、少于 100 人不报；校准只报告不拟合 | `calibration.py` / `slices.py` / `report.py` | ADR 0012 | `python -m bank_training.train` |
+| 注册表、门禁与审计（讲义 D-L2 / D-L3） | 四状态迁移表、门禁先行、审计先行（`fsync`）、`aliases.production` 回退只改指针、封存集规则就位但不切 | `registry.py` / `export.py` | ADR 0013 | `python -m bank.registry show` |
 | 对账点 1（独立于冻结产物） | 从原始库内存重算 → 与 `manifest.json` 逐项比 22 项，不一致退出 1，不写盘 | `reconcile.py` | ADR 0010 | `python -m bank.reconcile` |
 | 两条基线 | 规则加权打分 + 逻辑回归，同一验证集同一名额 | `baselines.py` + `train.py` | `docs/model_card.md` | `python -m bank_training.train` |
 | 名额制决策 | `quota_n = ceil(n_valid × frac)`，验证集算名额 | `metrics.py` + `config.py` | ADR 0002 / 0005 | `python -m bank_training.train` |

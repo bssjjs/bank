@@ -21,6 +21,7 @@ from typing import Any
 import mlflow
 import numpy as np
 from bank import bundle as B
+from bank import registry as REG
 from bank import schema as S
 from bank.catalog import load_catalog
 from bank.config import load_config
@@ -92,7 +93,11 @@ def _gate(metrics: dict[str, float], n_features: int) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="导出 ModelBundle")
     parser.add_argument("--version", default="1.0.0", help="版本号 x.y.z，默认 1.0.0")
-    parser.add_argument("--no-current", action="store_true", help="只写版本目录，不改 current")
+    parser.add_argument(
+        "--promote",
+        action="store_true",
+        help="登记进注册表后立刻发布（线上指针指向它）；不加只登记为 candidate",
+    )
     args = parser.parse_args(argv)
 
     cfg = load_config()
@@ -188,8 +193,20 @@ def main(argv: list[str] | None = None) -> int:
             training=training,
         )
         mlflow.log_artifact(str(path / B.BUNDLE_JSON), artifact_path="bundle")
-        if not args.no_current:
-            B.write_current(args.version)
+
+    registered = REG.register(
+        args.version,
+        run_id=run_id,
+        metrics=metrics,
+        gate=REG.GateRecord(passed=True),
+        note=f"模型包 {args.version}，特征集 {cfg.features.set}",
+    )
+    registered_state = registered["versions"][args.version]["status"]
+    if args.promote:
+        registered = REG.promote(
+            args.version, actor="bank_training.export", reason="导出后立即发布（--promote）"
+        )
+    current = REG.production() or "（未发布）"
 
     loaded = B.load_bundle(path)
     sample = valid.head(1)
@@ -208,9 +225,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"回读自检：随机一条样本得分 {sample_score:.4f}，等级 {loaded.level(sample_score)}")
     print(f"README 用的 run_id：{run_id}")
     print(
-        "current.json："
-        + ("未改动（--no-current）" if args.no_current else f"已指向 {args.version}")
+        f"注册表：{args.version} 状态 {registered['versions'][args.version]['status']}"
+        f"（登记时 {registered_state}），线上 {current}"
     )
+    if not args.promote:
+        print("要上线：python -m bank.registry promote " + args.version + ' --reason "..."')
     return 0
 
 
