@@ -52,7 +52,15 @@ def _append(path: Path, record: dict[str, Any]) -> None:
 
 
 def _body_errors(error: ValidationError) -> list[dict[str, Any]]:
-    return [{**item, "loc": ("body", *item["loc"])} for item in error.errors()]
+    """只回 loc / msg / type 三项。
+
+    不带 `input`：一是没必要把用户填的值原样回显（预测记录里都只留指纹），
+    二是 NaN 这种值会让 FastAPI 的 JSON 编码器在返回 422 的时候自己炸掉。
+    """
+    return [
+        {"loc": ("body", *item["loc"]), "msg": item["msg"], "type": item["type"]}
+        for item in error.errors()
+    ]
 
 
 class _ApiApp(FastAPI):

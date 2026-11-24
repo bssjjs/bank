@@ -121,6 +121,19 @@ class ApiTest(unittest.TestCase):
             [item["loc"] for item in response.json()["detail"]], [["body", "教育程度"]]
         )
 
+    def test_nan_is_422_not_a_crash(self) -> None:
+        """JSON 里混进 NaN 时在门口就挡住，不放它走到 sklearn 里炸。"""
+        payload = self._sample()
+        body = json.dumps(payload, ensure_ascii=False)
+        # 直接 json.dumps(float("nan")) 会被标准库拒绝，所以先序列化再把那个数换成 NaN：
+        # 这模拟的是「别人手写的请求体里带了 NaN 这个 token」。
+        body = body.replace(f'"年龄": {payload["年龄"]}', '"年龄": NaN')
+        response = self.client.post(
+            "/v1/predict", content=body, headers={"content-type": "application/json"}
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual([item["loc"] for item in response.json()["detail"]], [["body", "年龄"]])
+
     def test_batch_returns_one_item_per_row(self) -> None:
         items = [self._sample(index) for index in range(3)]
         response = self.client.post("/v1/predict/batch", json=items)

@@ -59,7 +59,9 @@ def build_input_model(bundle: Bundle) -> type[BaseModel]:
         unit = f"（{entry.unit}）" if entry.unit else ""
         description = f"{entry.display}{unit}"
         if entry.type in _NUMERIC_TYPES:
-            constraints: dict[str, Any] = {"description": description}
+            # allow_inf_nan=False：NaN/inf 在 JSON 里能混进来，进模型前就拦掉，
+            # 否则会一路走到 sklearn 才报一个没人看得懂的错。
+            constraints: dict[str, Any] = {"description": description, "allow_inf_nan": False}
             if entry.min is not None:
                 constraints["ge"] = entry.min
             if entry.max is not None:
