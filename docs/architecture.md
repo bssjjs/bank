@@ -37,6 +37,7 @@
 | 清洗规则带命中行数 | 注册表 `REGISTRY` 7 条规则，逐条计 `rows`，致命/记账分开 | `clean.py` + `rules.py` | `docs/spec.md` §7 | `python -m bank.freeze` |
 | 时间切分与缓冲 | 月份→日期重建、`<cut` 训练 / `≥cut` 验证、缓冲落月份边界 | `timeaxis.py` + `split.py` | ADR 0002 | `tests/unit/test_freeze.py` |
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
+| 名额策略与阈值标定（讲义 C-L1a） | 把名额比例标定成验证集上真实存在的分位点（`method="higher"`，不插值、不四舍五入）；`优先`=名额内全部、`备选`=次优带；导出复核「按阈值选中人数 vs 名额」；指标名/方向/位数一处登记 | `bank/policy.py` / `metric_specs.py` / `configs/decision.yaml` | ADR 0023 | `python -m bank_training.export --version <v>`、`pytest tests/unit/test_policy.py` |
 | 追踪协议与两个后端（讲义 C-L1c） | `Tracker` 协议 + `TRACKERS` 注册表；`memory`/`mlflow` 两个实现；**只有 `tracking/mlflow_backend.py` 能 import mlflow**，由 AST 架构测试守着；后端与实验名进 `configs/tracking.yaml` | `packages/training/src/bank_training/tracking/` | ADR 0021 | `pytest tests/unit/test_tracking.py tests/architecture/test_layers.py` |
 | 解释能加回分数（讲义 C-L1b） | 单条解释返回全部列贡献且不四舍五入；`Σ贡献 + 截距 == decision_function`、`sigmoid(决策值) == predict_proba` 逐行断言 | `explain.py` | ADR 0022 | `pytest tests/unit/test_explain.py` |
 | 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
