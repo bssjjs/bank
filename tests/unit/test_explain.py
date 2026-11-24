@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 import numpy as np
 from bank import catalog as C
@@ -10,6 +11,7 @@ from bank import explain as E
 from bank import schema as S
 from bank_training import algorithms
 from bank_training import data as D
+from bank_training import export as X
 from bank_training import model_config as MC
 
 
@@ -87,6 +89,23 @@ class ContributionIdentityTest(unittest.TestCase):
     def test_method_name_matches_the_implementation(self) -> None:
         self.assertEqual(E.EXPLAIN_METHOD, "linear_coef_x_scaled")
         self.assertTrue(hasattr(S, "TARGET"))
+
+
+class ExportExplainableGateTest(unittest.TestCase):
+    """不能逐列解释的算法不许当主模型上线（讲义 C-L1b / C-L2c）。"""
+
+    def test_only_linear_is_explainable(self) -> None:
+        self.assertTrue(X.explainable("lr"))
+        self.assertFalse(X.explainable("rf"))
+
+    def test_export_refuses_non_linear_main_model(self) -> None:
+        config = MC.ModelConfig(
+            schema_version=1, model=MC.ModelParams(kind="rf", c=1.0, max_iter=5000)
+        )
+        with mock.patch.object(X, "load_model_config", return_value=config):
+            code = X.main(["--version", "9.9.9"])
+        self.assertEqual(code, 1)
+        self.assertFalse((X.B.SERVING_DIR / "9.9.9").exists())
 
 
 if __name__ == "__main__":

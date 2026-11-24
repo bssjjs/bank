@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 422 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 424 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -102,7 +102,7 @@
 | `GET /health` | 存活 | 进程活着就 200，不读模型包 |
 | `GET /ready` | 就绪 | 模型包加载并校验通过才 200，否则 503 |
 | `GET /v1/model` | 模型信息 | 版本、指标、15 个输入字段（类型/范围/枚举），前端据此生成表单 |
-| `POST /v1/predict` | 单条预测 | 返回分数、等级、主要因素、用途提示；越界/枚举/缺字段都是 422 且 `loc` 指出字段 |
+| `POST /v1/predict` | 单条预测 | 返回分数、等级、主要因素、用途提示；越界/枚举/缺字段都是 424 且 `loc` 指出字段 |
 | `POST /v1/predict/batch` | 批量预测 | 上限 100 条（`configs/api.yaml`），整批共用一个请求号 |
 
 每条预测追加一行到 `data/processed/predictions.jsonl`（`prediction_record.v2`：`ts/request_id/model_version/score/level/control/features_hash/quota_frac/quota_n`，只留输入指纹、不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
@@ -171,7 +171,7 @@
 
 | 算法 | AP | ROC-AUC | 名额内精确率 | 名额内召回 | 抓中人数 |
 | --- | --- | --- | --- | --- | --- |
-| `lr`（主模型） | 0.649808 | 0.643812 | 0.742273 | 0.148148 | 264 |
+| `lr`（主模型） | 0.649808 | 0.643812 | 0.742473 | 0.148148 | 264 |
 | `rf` | 0.645537 | 0.642711 | 0.764045 | 0.152637 | 272 |
 
 注意 `rf` 这一组是**特征集 B** 的数，和 `docs/adr/0005-模型选择.md` 里特征集 A 的 0.6229/0.6024 不是同一组，别混用。

@@ -42,6 +42,15 @@ GATE_PRECISION = 0.60
 SERVING_EXCLUDED = (S.DURATION, S.TARGET_RAW)
 
 
+def explainable(kind: str) -> bool:
+    """主模型必须能逐列解释：贡献 × 系数 + 截距 == logit（ADR 0022）。
+
+    树模型没有这条等式，`bank.explain` 只能拒绝；那样的模型不许当主模型上线——
+    宁可发布会话开天窗，也不要在界面上给一个凑不出来的「主要因素」。
+    """
+    return kind == "lr"
+
+
 def _inputs(spec: Any) -> list[dict[str, Any]]:
     """要用户填的原始列：非派生，且不是「通话后才知道」的时长与目标列。
 
@@ -132,6 +141,10 @@ def main(argv: list[str] | None = None) -> int:
     selected = int(fitted.selected(scores).sum())
 
     failures = _gate(metrics, len(feature_names), selected=selected, quota_n=quota_n)
+    if not explainable(mcfg.model.kind):
+        failures.append(
+            f"主模型 {mcfg.model.kind!r} 无法逐列解释（解释只能对线性模型给出），不能上线"
+        )
     if failures:
         for item in failures:
             print(f"[门禁未通过] {item}")
