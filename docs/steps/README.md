@@ -7,7 +7,12 @@
   内容对照实际提交与当时的测试数，不是事后编的目标。
 - 质量门（`scripts/ci.py`）诞生于 `step-M8`。M1、M2 两步早于它，所以没有对应 tag：
   当时只有 `unittest discover`，硬打 tag 会假装"每一步都能过质量门"。**如实记录比整齐重要。**
-- 讲义步（C-L2a 评估报全、C-L3a 校准与切片、D-L2 注册表与审计、E-L2 热加载与指标、
-  F-L2 预测记录与回流、F7-C-L3b 演练与调参）都有 tag，回放同样覆盖：这些步的提交里
-  `scripts/ci.py` 已存在，能独立过门。
+- 讲义步（C-L2a 评估报全、C-L2b 算法注册表与一致性参照、C-L2c 模型与规则取舍、C-L3a 校准与切片、
+  D-L2 注册表与审计、E-L2 热加载与指标、F-L2 预测记录与回流、F6 告警与定时检查、
+  F7-C-L3b 演练与调参）都有 tag，回放同样覆盖：这些步的提交里 `scripts/ci.py` 已存在，能独立过门。
+- **讲义 B-L2 的四段没有单独 tag，对应关系在这里**：讲义把「从原始库重建」拆成
+  B-L2-sources / B-L2-cleaning / B-L2-builder / B-L2-reconcile 四步；本项目这四段是在 M2 一个
+  提交里一起落地的（`raw.py` 只读入口、`clean.py` 七条规则台账、`split.py` + `freeze.py` 的
+  构建与冻结、`reconcile.py` 对账点 1），当时还没有 `scripts/ci.py`。硬补四个 tag 会把一次提交
+  假装成四次独立交付，所以只在这里记映射，不补 tag——**宁可少一个 tag，不造假历史**。
 - 回放：`python scripts/replay_steps.py` 会对每个 `step-*` tag 建独立工作目录，装环境、跑质量门。
