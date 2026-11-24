@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 389 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 396 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 

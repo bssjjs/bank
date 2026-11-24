@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -39,6 +40,19 @@ def column_names(preprocessor: Any) -> list[str]:
     return names
 
 
+@dataclass(frozen=True)
+class Contribution:
+    """一列的贡献，保留完整精度（显示时才四舍五入）。
+
+    不变量：`sum(c.contribution for c in 全部列) + intercept == decision_function(row)`。
+    这条不变量是解释可信的唯一凭据——解释和模型对不上，就只是好看的故事。
+    """
+
+    feature: str
+    value: str | None
+    contribution: float
+
+
 def _linear_model(model: Pipeline) -> object:
     """取 Pipeline 的最后一步当分类器：不依赖训练脚本给它起的名字。"""
     if not model.steps:
@@ -49,8 +63,25 @@ def _linear_model(model: Pipeline) -> object:
     return estimator
 
 
-def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict[str, object]]:
-    """返回贡献最大的前 `top_k` 列（按绝对值排序），带原始取值与贡献。"""
+def _intercept(lr: object) -> float:
+    intercept = getattr(lr, "intercept_", 0.0)
+    values = np.asarray(intercept).reshape(-1)
+    if values.size != 1:
+        raise RuntimeError(f"解释只支持二分类单输出，当前 intercept_ 有 {values.size} 个")
+    return float(values[0])
+
+
+def _raw_value(row: pd.DataFrame, raw_column: str) -> str | None:
+    if raw_column not in row.columns:
+        return None
+    raw = row.iloc[0][raw_column]
+    if isinstance(raw, float):
+        raw = round(raw, 4)
+    return str(raw)
+
+
+def contributions(model: Pipeline, row: pd.DataFrame) -> tuple[float, list[Contribution]]:
+    """返回 (截距, 全部列的贡献)，按 |贡献| 降序；贡献不四舍五入。"""
     pre = model.steps[0][1]
     lr = _linear_model(model)
     transformed = np.asarray(pre.transform(row))
@@ -63,22 +94,29 @@ def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict
         )
     values = transformed.reshape(-1)
     contributions = coefficients * values
-    order = np.argsort(-np.abs(contributions))[:top_k]
-    out: list[dict[str, object]] = []
-    for index in order:
-        feature_name = names[index]
-        raw_column = feature_name.split("=")[0]
-        raw_value = row.iloc[0][raw_column] if raw_column in row.columns else None
-        if isinstance(raw_value, float):
-            raw_value = round(raw_value, 4)
-        out.append(
-            {
-                "feature": feature_name,
-                "value": None if raw_value is None else str(raw_value),
-                "contribution": round(float(contributions[index]), 6),
-            }
+    order = np.argsort(-np.abs(contributions))
+    out = [
+        Contribution(
+            feature=names[index],
+            value=_raw_value(row, names[index].split("=")[0]),
+            contribution=float(contributions[index]),
         )
-    return out
+        for index in order
+    ]
+    return _intercept(lr), out
+
+
+def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict[str, object]]:
+    """返回贡献最大的前 `top_k` 列（按绝对值排序），带原始取值与贡献。"""
+    _, all_contributions = contributions(model, row)
+    return [
+        {
+            "feature": item.feature,
+            "value": item.value,
+            "contribution": round(item.contribution, 6),
+        }
+        for item in all_contributions[:top_k]
+    ]
 
 
 def explain_many(
