@@ -191,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
             decision=decision,
             metrics=metrics,
             training=training,
+            runtime=B.runtime_now(),
         )
         mlflow.log_artifact(str(path / B.BUNDLE_JSON), artifact_path="bundle")
 

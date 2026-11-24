@@ -45,6 +45,7 @@ def _doc_kwargs(catalog_spec: catalog.CatalogSpec, names: list[str], version: st
             "explain_top_k": 5,
         },
         "metrics": {"ap": 0.6, "roc_auc": 0.65, "brier": 0.28},
+        "runtime": B.runtime_now(),
         "training": {
             "run_id": "test-run",
             "experiment": "test",
@@ -169,6 +170,54 @@ class TamperTest(BundleFixture):
         (path / B.MODEL_FILE).write_bytes(b"not a joblib file")
         with self.assertRaises(B.BundleError):
             B.load_bundle(path)
+
+
+class RuntimeGateTest(BundleFixture):
+    """运行时血统：包是谁训的、能不能在今天的机器上跑，加载时就要说清楚。"""
+
+    def _tamper(self, directory: Path, change) -> None:
+        """改 bundle.json 的某个字段并重算校验和（模拟「人改过 meta」）。"""
+        path = directory / B.BUNDLE_JSON
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        change(doc)
+        doc["checksum"]["value"] = B.sha256_json(B._payload(doc))
+        path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def test_runtime_is_written_and_read_back(self) -> None:
+        directory = self._write(self._root())
+        doc = json.loads((directory / B.BUNDLE_JSON).read_text(encoding="utf-8"))
+        self.assertEqual(doc["runtime"], B.runtime_now())
+        loaded = B.load_bundle(directory)
+        self.assertEqual(loaded.doc.runtime.sklearn, B.runtime_now()["sklearn"])
+
+    def test_sklearn_minor_version_mismatch_is_refused(self) -> None:
+        directory = self._write(self._root())
+        want = "1.6.0"
+        self._tamper(directory, lambda doc: doc["runtime"].update({"sklearn": want}))
+        with self.assertRaises(B.BundleError) as raised:
+            B.load_bundle(directory)
+        message = str(raised.exception)
+        self.assertIn(want, message)
+        self.assertIn(B.runtime_now()["sklearn"], message)
+        self.assertIn("主次版本不同", message)
+
+    def test_python_major_version_mismatch_is_refused(self) -> None:
+        directory = self._write(self._root())
+        self._tamper(directory, lambda doc: doc["runtime"].update({"python": "2.7.18"}))
+        with self.assertRaises(B.BundleError) as raised:
+            B.load_bundle(directory)
+        self.assertIn("主版本不同", str(raised.exception))
+
+    def test_hand_edited_meta_with_unknown_key_is_refused(self) -> None:
+        directory = self._write(self._root())
+        self._tamper(directory, lambda doc: doc.update({"approval": "口头说过"}))
+        with self.assertRaises(B.BundleError) as raised:
+            B.load_bundle(directory)
+        self.assertIn("不符合契约", str(raised.exception))
+
+    def test_bad_version_string_in_runtime_is_refused(self) -> None:
+        with self.assertRaises(Exception):
+            B.Runtime(python="3.12", sklearn="1.9.1", pandas="3.1.1", numpy="2.5.5")
 
 
 class CurrentPointerTest(BundleFixture):

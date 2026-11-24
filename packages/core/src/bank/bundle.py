@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -24,7 +26,8 @@ from typing import Any, Literal
 import joblib
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+import sklearn
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sklearn.pipeline import Pipeline
 
 from bank import dataset, explain, features
@@ -110,6 +113,63 @@ class Training(_Strict):
     n_features: int = Field(gt=0)
 
 
+_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+")
+
+
+class Runtime(_Strict):
+    """训练时的运行时版本。加载时用它拦「用 A 版本训练、拿 B 版本跑」的包。"""
+
+    python: str
+    sklearn: str
+    pandas: str
+    numpy: str
+
+    @field_validator("python", "sklearn", "pandas", "numpy")
+    @classmethod
+    def _looks_like_version(cls, value: str) -> str:
+        if not _VERSION_RE.match(value):
+            raise ValueError(f"版本号要写成 1.9.1 这种形式，收到 {value!r}")
+        return value
+
+
+def runtime_now() -> dict[str, str]:
+    """当前环境的四个版本号（导出时写进包）。"""
+    info = sys.version_info
+    return {
+        "python": f"{info.major}.{info.minor}.{info.micro}",
+        "sklearn": sklearn.__version__,
+        "pandas": pd.__version__,
+        "numpy": np.__version__,
+    }
+
+
+def _major_minor(version: str) -> tuple[int, int]:
+    parts = version.split(".")
+    return int(parts[0]), int(parts[1])
+
+
+def check_runtime(runtime: Runtime) -> None:
+    """sklearn 主次版本必须一致、Python 主版本必须一致，否则拒绝加载。
+
+    理由：pickle 只保证同版本可读，sklearn 在小版本里也会改估计器内部结构。
+    """
+    have = runtime_now()
+    want_sk = _major_minor(runtime.sklearn)
+    got_sk = _major_minor(have["sklearn"])
+    if want_sk != got_sk:
+        raise BundleError(
+            f"模型包是用 scikit-learn {runtime.sklearn} 训练的，当前环境是 {have['sklearn']}："
+            "主次版本不同，拒绝加载（pickle 不保证跨版本兼容，请重装依赖或重新导出）"
+        )
+    want_py = int(runtime.python.split(".")[0])
+    got_py = int(have["python"].split(".")[0])
+    if want_py != got_py:
+        raise BundleError(
+            f"模型包是用 Python {runtime.python} 训练的，当前环境是 {have['python']}："
+            "主版本不同，拒绝加载"
+        )
+
+
 class Checksum(_Strict):
     algorithm: Literal["sha256"]
     value: str = Field(min_length=64, max_length=64)
@@ -128,6 +188,7 @@ class BundleDoc(_Strict):
     decision: DecisionRule
     metrics: dict[str, float]
     training: Training
+    runtime: Runtime
     checksum: Checksum
 
     @model_validator(mode="after")
@@ -200,6 +261,7 @@ class Bundle:
             "decision": self.doc.decision.model_dump(),
             "metrics": self.doc.metrics,
             "training": self.doc.training.model_dump(),
+            "runtime": self.doc.runtime.model_dump(),
             "catalog_fingerprint": self.doc.catalog_fingerprint,
         }
 
@@ -219,6 +281,7 @@ def build_doc(
     decision: dict[str, Any],
     metrics: dict[str, float],
     training: dict[str, Any],
+    runtime: dict[str, str],
     model_file: dict[str, Any],
     created_at: str | None = None,
 ) -> dict[str, Any]:
@@ -242,6 +305,7 @@ def build_doc(
         "decision": decision,
         "metrics": {key: float(value) for key, value in metrics.items()},
         "training": training,
+        "runtime": runtime,
     }
     payload["checksum"] = {"algorithm": "sha256", "value": sha256_json(payload)}
     BundleDoc.model_validate(payload)  # 先自己过一遍，坏包不落盘
@@ -260,6 +324,7 @@ def write_bundle(
     decision: dict[str, Any],
     metrics: dict[str, float],
     training: dict[str, Any],
+    runtime: dict[str, str] | None = None,
     root: Path = SERVING_DIR,
 ) -> Path:
     """写一个版本目录；同名目录已存在就报错，绝不覆盖。
@@ -287,6 +352,7 @@ def write_bundle(
             decision=decision,
             metrics=metrics,
             training=training,
+            runtime=runtime or runtime_now(),
             model_file={
                 "name": MODEL_FILE,
                 "sha256": sha256_file(model_path),
@@ -333,6 +399,8 @@ def load_bundle(path: Path) -> Bundle:
         raise BundleError("模型文件大小与 bundle.json 不一致")
     if sha256_file(model_path) != doc.model_file.sha256:
         raise BundleError("模型文件校验和对不上：文件被改过，拒绝加载")
+
+    check_runtime(doc.runtime)
 
     model = joblib.load(model_path)
     if not isinstance(model, Pipeline):
