@@ -103,6 +103,29 @@ class NumbersAgreeTest(unittest.TestCase):
         self.assertEqual(main["params"]["n_valid"], 3556)
         self.assertEqual(main["params"]["positives_valid"], 1782)
 
+    def test_readme_parity_table_matches_the_baseline(self) -> None:
+        """README 的算法一致性表必须与 `baselines/v1/algorithm_parity.json` 逐格相等。
+
+        这张表是手抄进 README 的，抄错一位就是「报告数字与命令输出对不上」——
+        任务书的一票否决项。所以让测试盯住它，而不是靠人每次复核。
+        """
+        reference = json.loads((V1 / "algorithm_parity.json").read_text(encoding="utf-8"))
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        counts = {"lr": 264, "rf": 272}
+        for name, row in reference["algorithms"].items():
+            line = next(
+                (item for item in readme.splitlines() if item.startswith(f"| `{name}`")),
+                None,
+            )
+            self.assertIsNotNone(line, f"README 里找不到 `{name}` 这一行")
+            cells = [cell.strip() for cell in str(line).strip("|").split("|")]
+            self.assertEqual(len(cells), 6, f"`{name}` 这一行的列数不对：{cells}")
+            self.assertEqual(cells[1], f"{row['ap']:.6f}", name)
+            self.assertEqual(cells[2], f"{row['roc_auc']:.6f}", name)
+            self.assertEqual(cells[3], f"{row['precision_at_quota']:.6f}", name)
+            self.assertEqual(cells[4], f"{row['recall_at_quota']:.6f}", name)
+            self.assertEqual(cells[5], str(counts[name]), name)
+
 
 if __name__ == "__main__":
     unittest.main()
