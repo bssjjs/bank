@@ -40,7 +40,7 @@
 .venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
 .venv\Scripts\python.exe -m bank_api          # 起服务；换模型只改 current.json，不用重启
 
-# 10) 测试与质量门（交付前最后一关；pytest 292 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 305 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -120,6 +120,20 @@
 | 分数 | 1.0851 | 严重 |
 
 判级阈值：< 0.1 稳定，0.1–0.25 关注，≥ 0.25 严重；分箱边界只取基准集，缺失单独一箱，类别未见值合并「其他」。正例率同期 13.27% → 50.11%（+277.66%），与分数 PSI 同向，说明这是真实的时期漂移，不是数据错误。结果落 `data/processed/drift.json`（契约 `drift_report.v1`）并记一个 `m7-drift` run。回流与重训条件见 `docs/adr/0008-漂移监控与回流.md`。
+
+## 演练与调参（F7 / C-L3b）
+
+`python -m bank_training.drill` 在验证集副本上注入四种已知变化，五项断言全部按预期：
+
+| 检查 | 期望 | 实测 |
+| --- | --- | --- |
+| 账户余额 ×1.5+5000 | PSI ≥ 0.25 | **12.4432** |
+| 职业一半改未知 | PSI ≥ 0.25 | **3.1173** |
+| 六成负例翻正例 | 正例率变化 ≥ 50% | 0.5011 → 0.8003（**+59.7%**） |
+| 婚姻状态不动 | PSI < 0.1 | 0.0084 |
+| 反证：两边各自分位数 | PSI < 0.1（看不见） | 0.0233 |
+
+`python -m bank_training.tune` 只在训练期内部切分（拟合段 7,341 行 / 内层评估 10,196 行），四个 C 的内层 AP 差 0.0094（< 噪声线 0.01），结论是**不改** `configs/model.yaml`。
 
 ## 目录
 

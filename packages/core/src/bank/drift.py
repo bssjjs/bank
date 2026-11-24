@@ -60,7 +60,7 @@ def quantile_edges(values: pd.Series, bins: int = BINS) -> list[float]:
     return [float(item) for item in unique]
 
 
-def _share(values: pd.Series, edges: list[float]) -> np.ndarray:
+def shares(values: pd.Series, edges: list[float]) -> np.ndarray:
     """把一列映射成 (箱数 + 1) 的比例向量，最后一箱是缺失。"""
     inner = edges[1:-1]
     codes = np.searchsorted(inner, values.to_numpy(dtype="float64"), side="right")
@@ -71,7 +71,7 @@ def _share(values: pd.Series, edges: list[float]) -> np.ndarray:
     return shares / shares.sum()
 
 
-def _psi_from_shares(reference: np.ndarray, current: np.ndarray) -> float:
+def psi_from_shares(reference: np.ndarray, current: np.ndarray) -> float:
     ref = reference + EPS
     cur = current + EPS
     return float(np.sum((cur - ref) * np.log(cur / ref)))
@@ -79,7 +79,7 @@ def _psi_from_shares(reference: np.ndarray, current: np.ndarray) -> float:
 
 def psi_numeric(reference: pd.Series, current: pd.Series, bins: int = BINS) -> Drift:
     edges = quantile_edges(reference, bins)
-    value = _psi_from_shares(_share(reference, edges), _share(current, edges))
+    value = psi_from_shares(shares(reference, edges), shares(current, edges))
     return Drift(
         feature=str(reference.name),
         kind="numeric",
@@ -102,7 +102,7 @@ def psi_categorical(reference: pd.Series, current: pd.Series) -> Drift:
     shares_ref = known.to_numpy(dtype="float64")
     if other:
         shares_ref = np.append(shares_ref, 0.0)
-    value = _psi_from_shares(shares_ref, shares_now)
+    value = psi_from_shares(shares_ref, shares_now)
     return Drift(
         feature=str(reference.name),
         kind="categorical",
@@ -146,7 +146,7 @@ def score_psi(reference_scores: np.ndarray, current_scores: np.ndarray) -> Drift
     ref = pd.Series(np.asarray(reference_scores, dtype="float64"), name="score")
     cur = pd.Series(np.asarray(current_scores, dtype="float64"), name="score")
     edges = quantile_edges(ref)
-    value = _psi_from_shares(_share(ref, edges), _share(cur, edges))
+    value = psi_from_shares(shares(ref, edges), shares(cur, edges))
     return Drift(
         feature="score",
         kind="score",
