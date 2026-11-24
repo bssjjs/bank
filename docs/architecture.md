@@ -37,6 +37,7 @@
 | 清洗规则带命中行数 | 注册表 `REGISTRY` 7 条规则，逐条计 `rows`，致命/记账分开 | `clean.py` + `rules.py` | `docs/spec.md` §7 | `python -m bank.freeze` |
 | 时间切分与缓冲 | 月份→日期重建、`<cut` 训练 / `≥cut` 验证、缓冲落月份边界 | `timeaxis.py` + `split.py` | ADR 0002 | `tests/unit/test_freeze.py` |
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
+| 对账点 1（独立于冻结产物） | 从原始库内存重算 → 与 `manifest.json` 逐项比 22 项，不一致退出 1，不写盘 | `reconcile.py` | ADR 0010 | `python -m bank.reconcile` |
 | 两条基线 | 规则加权打分 + 逻辑回归，同一验证集同一名额 | `baselines.py` + `train.py` | `docs/model_card.md` | `python -m bank_training.train` |
 | 名额制决策 | `quota_n = ceil(n_valid × frac)`，验证集算名额 | `metrics.py` + `config.py` | ADR 0002 / 0005 | `python -m bank_training.train` |
 | 运行记录 | 每次训练一个 mlflow run（params/tags/metrics/artifacts） | `train.py` `_log_run` | `docs/model_card.md` | `python -m bank_training.train` |
@@ -52,7 +53,7 @@
 | 特征目录 | `features.yaml` 33 字段（含 8 禁用列），与 `schema.py` 对账 | `catalog.py` | ADR 0004 | `pytest tests/unit/test_catalog.py` |
 | 注册表 | 清洗规则按编码登记，台账顺序可 diff | `rules.py` | ADR 0004 | `pytest tests/unit/test_rules.py` |
 | 质量门 | 五道门一条命令，末行「质量门：全绿」 | `scripts/ci.py` | 本文件 §7 | `python scripts/ci.py` |
-| 文档与 ADR | 8 份 ADR + 9 张模块卡 + 本文件 | `docs/adr/` `docs/modules/` | — | — |
+| 文档与 ADR | 9 份 ADR + 9 张模块卡 + 本文件 | `docs/adr/` `docs/modules/` | — | — |
 
 ## 3. 模块图与分层
 
@@ -208,7 +209,7 @@ bank/
 ├── notebooks/                分析存档与口径说明
 └── docs/
     ├── problem.md spec.md data_card.md pitfalls.md model_card.md architecture.md
-    ├── adr/0001–0008
+    ├── adr/0001–0010
     ├── modules/m1–m9
     └── notes/参考项目经验.md
 ```

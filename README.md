@@ -17,6 +17,9 @@
 # 4) 冻结：按时序切分、算三级指纹、写 manifest（--check 只校验不重建）
 .venv\Scripts\python.exe -m bank.freeze
 
+# 4b) 对账点 1：从原始库重算一遍，与冻结账单逐项比（不一致退出码 1）
+.venv\Scripts\python.exe -m bank.reconcile
+
 # 5) 训练与评估：两条基线 + 主模型，指标与产物全部记进 mlflow
 .venv\Scripts\python.exe -m bank_training.train
 

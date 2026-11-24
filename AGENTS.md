@@ -7,7 +7,7 @@
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。`tests/` 有 224 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。`tests/` 有 231 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
 - 前端**还不存在**，别假设它存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
 
 ### 五个人的角色
@@ -22,12 +22,13 @@
 
 ## 二、怎么算完成
 
-现在能跑的命令（十二条，不要自创第十三条）：
+现在能跑的命令（十四条，不要自创第十五条）：
 
 ```powershell
 .venv\Scripts\python.exe -m bank.build
 .venv\Scripts\python.exe -m bank.profile
 .venv\Scripts\python.exe -m bank.freeze        # 加 --check 只校验不重建
+.venv\Scripts\python.exe -m bank.reconcile     # 从原始库重算，与冻结账单逐项对账
 .venv\Scripts\python.exe -m bank_training.train
 .venv\Scripts\python.exe -m bank_training.experiments
 .venv\Scripts\python.exe -m bank_training.export --version 1.0.0
@@ -42,9 +43,10 @@
 - `bank.build` 必须打印「口径层构建完成」，行数 45,211、正例 5,289，并写出 `data/model_dataset.parquet` 与 `data/feature_spec.json`。
 - `bank.profile` 是文档数字的唯一出处：`docs/data_card.md`、`docs/spec.md` 里的行数、正例率、漂移表、口径冲突行数、泄漏 AUC 全部来自它。改数据或改口径后，先跑它，再改文档。
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
+- `bank.reconcile` 是对账点 1：**不读冻结的 parquet**，直接从原始库重切一遍，再和 `data/frozen/manifest.json` 的账单逐项比（源文件指纹、配置指纹、原始行数/正例/列清单、窗口、两表行数/正例/内容指纹/日期范围、名额、特征数、目录一致性）。必须打印「对账通过：从原始库重建的两表与冻结账单逐项一致」，退出码 0；任何一项不一致就退出 1，且不回写冻结数据。它和 `--check` 不同：`--check` 比「今天重跑 vs 冻结」，`reconcile` 比「账单 vs 重建」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（224 项），按目录分：unit 117 / contract 6 / service 12 / architecture 37 / exam 52。
-  - unit 117：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、注册表 5、训练 11、模型包 12、漂移 11。
+- `pytest tests` 必须全过（231 项），按目录分：unit 124 / contract 6 / service 12 / architecture 37 / exam 52。
+  - unit 124：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、注册表 5、训练 11、模型包 12、漂移 11、对账 7。
   - contract 6：OpenAPI 的必填/范围/枚举/批量上限与模型包对账。
   - service 12：探针、字段级 422、批量上限、预测记录、无包时 503（干净检出时 `tests/support.py` 会先导出一个模型包）。
   - architecture 37：依赖方向与包布局 10、质量门守门 15、基线封条 8、回放 tag 4。

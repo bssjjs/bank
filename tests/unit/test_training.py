@@ -130,12 +130,14 @@ class ModelConfigTest(unittest.TestCase):
 
 
 def _write(text: str) -> Path:
-    import tempfile
+    """写到仓库的 .tmp 下，不落到工作区根目录（tempfile 在本机沙箱里会被重定向到 cwd）。"""
+    import uuid
 
-    handle = tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8")
-    handle.write(text)
-    handle.close()
-    return Path(handle.name)
+    directory = S.ROOT / ".tmp" / "model-config"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{uuid.uuid4().hex}.yaml"
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
 
 
 if __name__ == "__main__":
