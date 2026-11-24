@@ -4,12 +4,12 @@
 1. 请求体字段由模型包生成（`schemas.build_input_model`），越界/枚举错由 pydantic 拦，
    统一转成 FastAPI 的 422，`detail[].loc` 精确指到字段名；
 2. 打分与解释都走 `bundle.score` / `bundle.explain`，与导出时同一条代码路径；
-3. 每条预测追加写一行 jsonl（时间、请求号、模型版本、分数、等级、是否对照），不写客户特征值。
+3. 每条预测追加写一行 jsonl（`bank.predictions` 的 v2 记录：时间、契约、请求号、模型版本、
+   分数、等级、是否对照、输入指纹、名额口径），不写客户特征值——输入只留 sha256。
 """
 
 from __future__ import annotations
 
-import json
 import threading
 import uuid
 from datetime import datetime
@@ -18,6 +18,7 @@ from typing import Any
 
 import uvicorn
 from bank import bundle as B
+from bank import predictions as P
 from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
@@ -42,10 +43,9 @@ def _now() -> str:
 
 
 def _append(path: Path, record: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-    with _LOCK, path.open("a", encoding="utf-8") as handle:
-        handle.write(line + "\n")
+    # 并发下也不许两行粘在一起：锁在进程内，单 worker 起服务（见 README）
+    with _LOCK:
+        P.append(path, record)
 
 
 def _body_errors(error: ValidationError) -> list[dict[str, Any]]:
@@ -122,7 +122,7 @@ def create_app(
     def request_id() -> str:
         return f"{config.serving.request_id_prefix}-{uuid.uuid4().hex[:12]}"
 
-    def predict_one(payload: dict[str, Any], rid: str, control: bool) -> Prediction:
+    def predict_one(payload: dict[str, Any], rid: str, control: bool | None) -> Prediction:
         bundle = state["bundle"]
         if bundle is None:
             raise RuntimeError("模型包未就绪")
@@ -131,19 +131,25 @@ def create_app(
             data = model(**payload)
         except ValidationError as error:
             raise RequestValidationError(_body_errors(error)) from error
-        frame = to_frame(data.model_dump(mode="json"))
+        clean = data.model_dump(mode="json")
+        frame = to_frame(clean)
         score = bundle.score(frame)
         level = bundle.level(score)
+        # 没显式指定就按 request_id 哈希抽 10% 作对照组（确定性抽样，重放结果一致）
+        flag = P.is_control(rid) if control is None else control
+        decision = bundle.doc.decision
         _append(
             log_file,
-            {
-                "ts": _now(),
-                "request_id": rid,
-                "model_version": bundle.version,
-                "score": round(score, 6),
-                "level": level,
-                "control": control,
-            },
+            P.record(
+                request_id=rid,
+                model_version=bundle.version,
+                score=score,
+                level=level,
+                control=flag,
+                payload=clean,
+                quota_frac=decision.quota_frac,
+                quota_n=decision.quota_n,
+            ),
         )
         factors = [Factor(**item) for item in bundle.explain(frame)]
         return Prediction(
@@ -173,7 +179,8 @@ def create_app(
 
     @app.post("/v1/predict", response_model=Prediction, summary="单条预测")
     def predict(
-        payload: dict[str, Any], control: bool = Query(False, description="是否对照组")
+        payload: dict[str, Any],
+        control: bool | None = Query(None, description="对照组标记；不填按 10% 哈希抽样自动判定"),
     ) -> Any:
         if state["bundle"] is None:
             return not_ready()
@@ -198,10 +205,12 @@ def create_app(
                 ]
             )
         rid = request_id()
+        # 一个批次一个请求号：对照组标记按批次算，同一批里的条目共用一个标记
+        flag = P.is_control(rid)
         return BatchResult(
             model_version=state["bundle"].version,
             request_id=rid,
-            items=[predict_one(item, rid, False) for item in items],
+            items=[predict_one(item, rid, flag) for item in items],
         )
 
     return app

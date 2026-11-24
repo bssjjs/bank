@@ -150,10 +150,27 @@ class ApiTest(unittest.TestCase):
         for line in lines[before:]:
             self.assertEqual(
                 set(line),
-                {"ts", "request_id", "model_version", "score", "level", "control"},
+                {
+                    "ts",
+                    "contract",
+                    "request_id",
+                    "model_version",
+                    "score",
+                    "level",
+                    "control",
+                    "features_hash",
+                    "quota_frac",
+                    "quota_n",
+                },
             )
-            self.assertNotIn("年龄", line)  # 日志里不写客户特征值
+            self.assertEqual(line["contract"], "prediction_record.v2")
+            self.assertEqual(len(line["features_hash"]), 64)
+            self.assertNotIn("年龄", line)  # 日志里不写客户特征值，只留哈希
+            self.assertIsInstance(line["control"], bool)
         self.assertTrue(lines[before + 1]["control"])
+        # 不显式指定时按 request_id 哈希自动判定，同一批条目共用一个标记
+        batch = [line for line in lines[before + 2 :]]
+        self.assertEqual(len({line["control"] for line in batch}), 1)
 
 
 class NotReadyTest(unittest.TestCase):

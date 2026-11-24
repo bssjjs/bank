@@ -7,7 +7,7 @@
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。`tests/` 有 260 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。`tests/` 有 282 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
 - 前端**还不存在**，别假设它存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
 
 ### 五个人的角色
@@ -22,7 +22,7 @@
 
 ## 二、怎么算完成
 
-现在能跑的命令（十五条，不要自创第十六条）：
+现在能跑的命令（十六条，不要自创第十七条）：
 
 ```powershell
 .venv\Scripts\python.exe -m bank.build
@@ -35,6 +35,7 @@
 .venv\Scripts\python.exe -m bank.registry show    # stage/promote/rollback/retire
 .venv\Scripts\python.exe -m bank_api          # 起服务，127.0.0.1:8000
 .venv\Scripts\python.exe -m bank_training.drift  # 对「线上」批次跑 PSI，默认对比验证集
+.venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 .venv\Scripts\python.exe scripts\freeze_baseline.py --check   # 基线封条，改了数字必须复跑
@@ -46,8 +47,8 @@
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - `bank.reconcile` 是对账点 1：**不读冻结的 parquet**，直接从原始库重切一遍，再和 `data/frozen/manifest.json` 的账单逐项比（源文件指纹、配置指纹、原始行数/正例/列清单、窗口、两表行数/正例/内容指纹/日期范围、名额、特征数、目录一致性）。必须打印「对账通过：从原始库重建的两表与冻结账单逐项一致」，退出码 0；任何一项不一致就退出 1，且不回写冻结数据。它和 `--check` 不同：`--check` 比「今天重跑 vs 冻结」，`reconcile` 比「账单 vs 重建」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（260 项），按目录分：unit 153 / contract 6 / service 12 / architecture 37 / exam 52。
-  - unit 153：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 12、漂移 11、对账 7、版本注册表 10。
+- `pytest tests` 必须全过（282 项），按目录分：unit 175 / contract 6 / service 12 / architecture 37 / exam 52。
+  - unit 175：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 12、漂移 11、对账 7、版本注册表 10、预测记录 12、标签回流 10。
   - contract 6：OpenAPI 的必填/范围/枚举/批量上限与模型包对账。
   - service 12：探针、字段级 422、批量上限、预测记录、无包时 503（干净检出时 `tests/support.py` 会先导出一个模型包）。
   - architecture 37：依赖方向与包布局 10、质量门守门 15、基线封条 8、回放 tag 4。
@@ -130,7 +131,8 @@ docs/cards/                  组件卡：指纹 / 配置 / 特征目录，每张
 - 已完成 A1（地基与守门，§卷一参考）：`.gitattributes`（LF/二进制声明）、`.editorconfig`、三个 `py.typed`、`.importlinter` 契约改名 `core-independent` / `training-api-independent`、`scripts/ci.py` 五道门 + 覆盖率门槛 85（门清单由 `gates()` 公开，`tests/architecture/test_quality_gate.py` 15 项守着不被调低）。161 项测试时全绿、覆盖率 86%。
 - 已完成 A2（基线 + 考卷 + 卡片 + 回放）：`baselines/`（8 个快照 + `SHA256SUMS`，`scripts/freeze_baseline.py --write/--check`；快照 JSON 统一 UTF-8+LF 写出，否则 CRLF 会让封条在 clone 后对不上）、`tests/exam/` 三份考卷 52 项（配置 18 / 目录 16 / 指纹 18，人写的，智能体只读）、`docs/cards/` 三张卡、`docs/steps/` 十份步骤卡、`scripts/replay_steps.py`（8 个 `step-*` tag 各建一次干净 worktree：装环境 → 重建产物 → 跑门）、`tests/support.py::ensure_served_bundle`（缺模型包时先导出一个，服务与契约测试靠它才能在干净检出里跑）。
 - 已完成 D-L2 / D-L3（注册表、门禁与审计）：`packages/core/src/bank/registry.py`（`model_registry.v1` 契约；四状态 `candidate → staging → production → retired` 与迁移表；**门禁先行**——门禁没过一步都不动；**审计先行**——先写 `audit.jsonl` 并 `fsync` 再改状态；`aliases.production` 回退只改指针不删目录；CLI `python -m bank.registry show|stage|promote|rollback|retire`），`export.py` 默认只登记为 `candidate`（要上线加 `--promote` 或单独 `promote`），`docs/adr/0013-注册表门禁与审计.md`，`tests/unit/test_registry.py`（10 项）。演练实测：`export --version 1.1.0`（candidate）→ `promote`（production，1.0.0 降 staging）→ `rollback 1.0.0`（production，1.1.0 降 staging），共 7 条审计事件。**封存集**这轮不切：只有 3,556 行验证集，再切一段会让名额内精确率的 95% 区间宽到没有判断力；规则写在 ADR 0013，代码里不留开箱入口。
-- 全量复核：`pytest tests` **260 项全过**、覆盖率 86%、`scripts/ci.py` 末行「质量门：全绿」；`scripts/replay_steps.py` 实测 **8 个 tag 全通过**（step-A1/A2/M3/M4/M5/M7/M8/M9，2026-11-23）。回放要先把 `data/bank-marketing.db` 拷进工作目录（它不进 Git），这一步由脚本自己做。
+- 已完成 F-L2（预测记录 v2、对照组与标签回流）：`packages/core/src/bank/predictions.py`（`prediction_record.v2`：`features_hash` 只留 sha256 不留特征值、`quota_frac/quota_n`、`is_control` 按 `sha256(seed:request_id)` 确定性抽 10%）、`app.py` 每条预测写 v2 记录（显式 `?control=` 可覆盖，批次共用一个标记）、`packages/training/src/bank_training/backfill.py`（`--labels` 两列 CSV；对不上号的 request_id 直接报错退出、重复标签拒绝、同一号多条只取最后一条；落 `labeled.jsonl` 与 `feedback.v1` 汇总，含 `training_allowed` = 有标签且非对照组）、`docs/adr/0014-预测记录v2与标签回流.md`、`tests/unit/test_predictions.py`（12 项）、`tests/unit/test_backfill.py`（10 项）。演练实测 12 条预测 / 10 条标签：覆盖率 83.3%、可重训 10、认购率 0.4000。
+- 全量复核：`pytest tests` **282 项全过**、覆盖率 86%、`scripts/ci.py` 末行「质量门：全绿」；`scripts/replay_steps.py` 实测 **8 个 tag 全通过**（step-A1/A2/M3/M4/M5/M7/M8/M9，2026-11-23）。回放要先把 `data/bank-marketing.db` 拷进工作目录（它不进 Git），这一步由脚本自己做。
 - **未开始：M6 前端**，这是负责人的决定——他自己写，不要替他实现。设计卡在 `docs/modules/m6-前端页面.md`（目标/验收/不做），要实现时按任务书 M6：字段从 `GET /v1/model` 动态生成、结果卡、字段级错误、服务状态提示、只走 HTTP；接口已经就绪（`/v1/model` 返回 15 个输入字段，`/v1/predict` 30 秒内可接上）。
 - **已关闭的口径问题：`联系方式` 不是隐私列**（负责人 2026-11-23 决定）。它存的是联系渠道类型（手机 / 固话 / 未知，13,020 行是「未知」），不是电话号码，不构成个人信息。因此它继续留在 21 个特征与 15 个必填输入里，分析与前端都照常使用。之前记过一条「待移除」的待办，已随这次决定作废——不要因为它听起来像隐私就去掉它，那样会让指标无故下降，还得改整条冻结/训练/导出/文档链。
 - 已定的口径（ADR 0002 为准，别再问）：窗口 **A = 2008-11-01~2010-11-17**（21,093 行 / 4,109 正例）；训练 `<2009-10-01`（17,537 / 2,327 / 13.27%）；验证 `≥2009-10-01`（3,556 / 1,782 / 50.11%）；名额 **356** 人；主口径名额制、阈值 0.5 只作对照；主模型逻辑回归 + **特征集 B**（21 列，去掉月份序/sin/cos 三列，E2 证据见 ADR 0005）、切分按时间、不打乱不分层、缓冲 0 天。
