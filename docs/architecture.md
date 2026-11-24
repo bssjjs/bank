@@ -234,7 +234,7 @@ bank/
 2. `api/schemas.py` 的 `PredictInput`（由 `bundle.inputs` 生成）做类型/范围/枚举校验；失败 → 422，`loc=["body", 字段名]`。
 3. `Bundle.prepare`：`dataset.derive_features` 补齐派生列（哨兵处理、分档、信息完整度、月份/日期周期编码），`select_features` 按 `bundle.features` 的顺序取 21 列；缺列 → `MissingColumnsError`。
 4. `Pipeline.predict_proba`：预处理器（中位数/众数填补、标准化、有序编码、独热）与系数都是训练时拟合的那一份。
-5. `Bundle.level(score)`：≥ 0.6387 → 优先；≥ 0.5730 → 备选；否则不建议。切点是验证集分数分位数，不是概率阈值。
+5. `Bundle.level(score)`：≥ 0.57298 → 优先（名额内）；≥ 0.253228 → 备选（名额外的次优带）；否则不建议。切点是验证集分位数，不是概率阈值（ADR 0023）。
 6. `explain.explain_one`：取 |系数 × 标准化后取值| 前 5 个因素，附中文特征名与取值。
 7. 追加一行 `predictions.jsonl`，返回 `{request_id, model_version, score, level, factors, advice}`。
 8. 平均分（0.272）系统性低于验证集基率（0.501）是漂移所致，见 ADR 0008；`/v1/predict` 不返回校准后的概率。

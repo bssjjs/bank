@@ -1,0 +1,9 @@
+# 名额怎么变成阈值：讲义 C-L1a。数字的唯一出处仍是 configs/base.yaml 的 quota.frac，
+# 这里只写「用哪种标定方式」，以及名额外的次优带铺多宽。
+schema_version: 1
+
+decision:
+  # capacity_quantile：阈值 = 验证集分数的分位点（method="higher"，不插值）。
+  policy: capacity_quantile
+  # 名额外的次优带铺到 40% 的位置（0.40 > capacity 0.10，参数校验会拦住写反）。
+  medium_fraction: 0.40

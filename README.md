@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 396 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 415 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -85,7 +85,7 @@
 | --- | --- |
 | 版本与契约 | `1.0.0` / `model_bundle.v1` |
 | 特征与必填输入 | 21 列 / 15 个原始字段 |
-| 等级切点 | 优先 ≥ 0.6387，备选 ≥ 0.5730（验证集分数分位数，不是概率阈值） |
+| 等级切点 | 优先 ≥ 0.57298，备选 ≥ 0.253228（名额边界与 40% 分位，验证集分数分位数，不是概率阈值） |
 | 校验和 | `bundle.json` 与 `model.joblib` 各一份 sha256，加载时都对 |
 | 运行时 | `runtime`：python / sklearn / pandas / numpy 版本；sklearn 主次版本或 Python 主版本不一致时拒绝加载（ADR 0020） |
 | 发布门禁 | 特征 ≥ 10、AP ≥ 0.50、名额内精确率 ≥ 0.60、ROC-AUC > 0.5 |

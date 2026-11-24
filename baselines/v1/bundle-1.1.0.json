@@ -1,7 +1,7 @@
 {
   "contract": "model_bundle.v1",
-  "version": "1.0.0",
-  "created_at": "2026-11-23T08:50:35+08:00",
+  "version": "1.1.0",
+  "created_at": "2026-11-24T19:16:43+08:00",
   "model_file": {
     "name": "model.joblib",
     "sha256": "2ca9264271388babea2447f22113b708083db1b47298482c283aaf560332c271",
@@ -328,8 +328,8 @@
     "quota_frac": 0.1,
     "quota_n": 356,
     "level_cutoffs": {
-      "优先": 0.638743,
-      "备选": 0.57298
+      "优先": 0.5729801222394268,
+      "备选": 0.25322804130943144
     },
     "threshold": 0.5,
     "explain_top_k": 5
@@ -339,32 +339,46 @@
     "positives": 1782.0,
     "quota_n": 356.0,
     "base_rate": 0.501125,
-    "ap": 0.649808,
-    "roc_auc": 0.643812,
     "precision_at_quota": 0.741573,
     "recall_at_quota": 0.148148,
+    "f1_at_quota": 0.24696,
     "lift_at_quota": 1.4798,
+    "accuracy_at_quota": 0.547244,
+    "tp_at_quota": 264.0,
+    "fp_at_quota": 92.0,
+    "fn_at_quota": 1518.0,
+    "roc_auc": 0.643812,
+    "ap": 0.649808,
     "brier": 0.285249,
+    "log_loss": 0.807986,
+    "ece": 0.229194,
     "score_mean": 0.271931,
     "t05_threshold": 0.5,
     "t05_selected": 574.0,
     "t05_precision": 0.759582,
-    "t05_recall": 0.244669
+    "t05_recall": 0.244669,
+    "t05_f1": 0.370119
   },
   "training": {
-    "run_id": "6ca57bf801504d4a891ead39fc8e5d5a",
+    "run_id": "7530c4281634419fa243470de1be3305",
     "experiment": "bank-marketing",
     "data_fingerprint_train": "03832a965af755657b3f36a0fcd93438c1f00c206fd31a586f0f71d93fea5ff5",
     "data_fingerprint_valid": "d680004e613fdb0ca405a4a2c2d0234b954152255ac46f34a815250f9918fbd0",
     "config_fingerprint": "d5259bab647042294d6e54a83e1868acd1875df66cf98edfe5fa0b27087d92ab",
-    "git_sha": "9c8cc18e82ddf3b376177c8c3b490df4473233c9",
-    "trained_at": "2026-11-23T08:50:33+08:00",
+    "git_sha": "7c799a338be42c1cbb92e07eecbc30395d5168fe",
+    "trained_at": "2026-11-24T19:16:42+08:00",
     "rows_train": 17537,
     "rows_valid": 3556,
     "n_features": 21
   },
+  "runtime": {
+    "python": "3.12.16",
+    "sklearn": "1.9.1",
+    "pandas": "3.1.1",
+    "numpy": "2.5.5"
+  },
   "checksum": {
     "algorithm": "sha256",
-    "value": "db2378ae4d65ec859606668d40c9d64fd8d6f52d46f50cf8907003a8d1ebb6a4"
+    "value": "1c3efab9709e88f2464c2afbe1da4f0d84ea93a5340b26b2fda9c12f89412f92"
   }
 }

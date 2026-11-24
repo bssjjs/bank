@@ -3,7 +3,7 @@
 做五件事：
 1. 读冻结集与 `configs/model.yaml`，用主口径（特征集、模型类型、C）重训一次；
 2. 在验证集上算指标（只报数，不回头调参）；
-3. 用验证集分数冻结两个等级切点：「优先」= 名额内前 1/3 的分数下限，「备选」= 名额边界；
+3. 用验证集分数冻结两个等级切点：「优先」= 名额边界，「备选」= 名额外的次优带边界；
 4. 过发布门禁（指标下限 + 包自检），任何一条不过就拒绝发布；
 5. 写 `models/serving/<版本>/`，再把 `current.json` 指向它——不覆盖旧版本。
 
@@ -14,16 +14,17 @@
 from __future__ import annotations
 
 import argparse
-import math
 from datetime import datetime
 from typing import Any
 
 import numpy as np
 from bank import bundle as B
+from bank import policy as P
 from bank import registry as REG
 from bank import schema as S
 from bank.catalog import load_catalog
 from bank.config import load_config
+from bank.policy import load_decision_config
 from bank.repro import git_sha
 
 from bank_training.data import load_frozen, split_xy
@@ -63,19 +64,23 @@ def _inputs(spec: Any) -> list[dict[str, Any]]:
     ]
 
 
-def _level_cutoffs(scores: np.ndarray, quota_n: int) -> dict[str, float]:
-    """把「名额内前 1/3」与「名额边界」两个分数冻进包里，单条请求据此判等级。"""
-    ranked = np.sort(np.asarray(scores, dtype="float64"))[::-1]
-    if len(ranked) < quota_n:
-        raise ValueError(f"验证集 {len(ranked)} 人不够名额 {quota_n} 人")
-    third = math.ceil(quota_n / 3)
-    return {
-        "优先": round(float(ranked[third - 1]), 6),
-        "备选": round(float(ranked[quota_n - 1]), 6),
+def _level_cutoffs(
+    scores: np.ndarray, *, capacity: float, medium_fraction: float
+) -> tuple[dict[str, float], "P.DecisionPolicy"]:
+    """把名额比例换成真实分数（讲义 C-L1a）：优先 = 名额边界，备选 = 次优带边界。"""
+    fitted = P.fit_policy(
+        "capacity_quantile", scores, capacity=capacity, medium_fraction=medium_fraction
+    )
+    # 讲义 C-L1a 的 A 口径：优先 = 名额内全部；备选 = 名额外的次优带。
+    # 阈值存原始 float，不四舍五入（6 位小数会把边界上的人挤出去）。
+    cutoffs = {
+        "优先": fitted.quota_threshold,
+        "备选": fitted.watch_threshold,
     }
+    return cutoffs, fitted
 
 
-def _gate(metrics: dict[str, float], n_features: int) -> list[str]:
+def _gate(metrics: dict[str, float], n_features: int, *, selected: int, quota_n: int) -> list[str]:
     """发布门禁：指标达不到下限就不许上线。阈值写在代码里，不藏。"""
     failures: list[str] = []
     if n_features < MIN_FEATURES:
@@ -86,6 +91,8 @@ def _gate(metrics: dict[str, float], n_features: int) -> list[str]:
         failures.append(f"名额内精确率 {metrics['precision_at_quota']:.4f} < {GATE_PRECISION}")
     if not metrics["roc_auc"] > 0.5:
         failures.append(f"ROC-AUC {metrics['roc_auc']:.4f} 不高于 0.5，排序无效")
+    if abs(selected - quota_n) > 1:
+        failures.append(f"按阈值选中 {selected} 人，名额是 {quota_n} 人：阈值与名额对不上")
     return failures
 
 
@@ -101,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     cfg = load_config()
+    dcfg = load_decision_config()
     mcfg = load_model_config()
     spec = load_catalog()
     train, valid, manifest = load_frozen()
@@ -118,9 +126,12 @@ def main(argv: list[str] | None = None) -> int:
 
     metrics = evaluate(y_valid, scores, quota_n)
     metrics.update({f"t05_{k}": v for k, v in threshold_metrics(y_valid, scores, 0.5).items()})
-    cutoffs = _level_cutoffs(scores, quota_n)
+    cutoffs, fitted = _level_cutoffs(
+        scores, capacity=cfg.quota.frac, medium_fraction=dcfg.decision.medium_fraction
+    )
+    selected = int(fitted.selected(scores).sum())
 
-    failures = _gate(metrics, len(feature_names))
+    failures = _gate(metrics, len(feature_names), selected=selected, quota_n=quota_n)
     if failures:
         for item in failures:
             print(f"[门禁未通过] {item}")
@@ -170,6 +181,8 @@ def main(argv: list[str] | None = None) -> int:
                 "max_iter": mcfg.model.max_iter,
                 "quota_frac": cfg.quota.frac,
                 "quota_n": quota_n,
+                "decision_policy": dcfg.decision.policy,
+                "medium_fraction": dcfg.decision.medium_fraction,
             }
         )
         tracker.log_metrics({key: float(value) for key, value in metrics.items()})
@@ -221,6 +234,10 @@ def main(argv: list[str] | None = None) -> int:
         f"名额内精确率 {metrics['precision_at_quota']:.4f}，召回率 {metrics['recall_at_quota']:.4f}"
     )
     print(f"等级切点：优先 ≥ {cutoffs['优先']:.4f}，备选 ≥ {cutoffs['备选']:.4f}")
+    print(
+        f"名额策略 {fitted.kind}：名额边界 {fitted.quota_threshold:.4f}（选中 {selected} 人），"
+        f"次优带边界 {fitted.watch_threshold:.4f}（{dcfg.decision.medium_fraction:.0%} 分位）"
+    )
     print(f"回读自检：随机一条样本得分 {sample_score:.4f}，等级 {loaded.level(sample_score)}")
     print(f"README 用的 run_id：{run_id}")
     print(
