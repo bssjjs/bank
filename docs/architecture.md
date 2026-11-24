@@ -217,12 +217,17 @@ bank/
 │   ├── frozen/               train/valid 冻结集 + manifest + FROZEN（入 Git）
 │   └── processed/            run 快照、drift.json、预测记录（产物，不入 Git）
 ├── models/serving/<版本>/    模型包（不入 Git，一条命令重导）
-├── tests/{unit,contract,architecture,service}
+├── configs/                  base/features/model/api/watch/tracking/decision 七份，全部强校验
+├── baselines/                第一轮结果的文件封条（v1/ 快照 + SHA256SUMS）
+├── scripts/                  ci.py 质量门、freeze_baseline.py 封条、replay_steps.py 按 tag 回放
+├── tests/{unit,contract,architecture,service,exam}
 ├── notebooks/                分析存档与口径说明
 └── docs/
     ├── problem.md spec.md data_card.md pitfalls.md model_card.md architecture.md
-    ├── adr/0001–0010
+    ├── adr/0001–0023（0009 随 M6 暂缓撤回，编号不复用）
     ├── modules/m1–m9
+    ├── steps/                步骤卡：每个 step-* tag 一张，含讲义步
+    ├── cards/                组件卡：指纹 / 配置 / 特征目录 / 服务 / 告警
     └── notes/参考项目经验.md
 ```
 
@@ -255,12 +260,13 @@ bank/
 
 - M1 口径：`docs/problem.md`、`spec.md`、`data_card.md`、`pitfalls.md`（9 条）、ADR 0001/0002；`timeaxis.py` 与 `profile.py` 让每个数字可复现。
 - M2 管道：`raw`（只读）、`clean` + `rules`（7 条规则、命中 5 行、无删行）、`split`（时间切分、缓冲 0 落月份边界）、`repro`（源/配置/内容三级指纹）、`freeze` + `--check`、`manifest.v1`。
-- M3 训练评估：规则基线 + LR-A + LR-B（主）+ RF-A、名额制指标、mlflow 4 run + 5 实验、单条解释、`model_card.md`、ADR 0005。
-- M4 模型包：`model_bundle.v1`、校验和、staging 原子写、不覆盖、`current.json`、发布门禁、ADR 0006。
-- M5 服务：5 条路由、字段级 422、批量上限、预测记录、`/docs`、ADR 0007。
-- M7 漂移：PSI（等频 10 箱、边界取基准、缺失单独一箱、未见类别合并）、`drift.json` 契约、`m7-drift` run、回流与三条重训条件、ADR 0008。
-- M8 底座：三包 + import 契约 + AST 测试、四份 YAML 强校验、33 字段特征目录、清洗规则注册表、五道门、145 项测试、`AGENTS.md`、ADR 0004。
-- M9 文档：本文档、8 份 ADR、9 张模块卡、贡献表。
+- M3 训练评估：规则基线 + LR-A + LR-B（主）+ RF-A、名额制指标、单条解释、`model_card.md`、ADR 0005；13 个自洽指标、两种名额口径、200 次重抽的 95% 区间、评估报告作为产物落进运行（ADR 0011）；校准表与五张切片表（ADR 0012）；名额策略与阈值标定（ADR 0023）。
+- M4 模型包：`model_bundle.v1`、校验和、staging 原子写、不覆盖、`current.json`、发布门禁、运行时血统（ADR 0006 / 0020）、四状态注册表与审计（ADR 0013）、主模型必须可解释（ADR 0022）。
+- M5 服务：6 条路由（含 `/metrics`）、字段级 422、批量上限、v2 预测记录、`/docs`、按指针热加载（ADR 0007 / 0015）。
+- M7 漂移：PSI（等频 10 箱、边界取基准、缺失单独一箱、未见类别合并）、`drift.json` 契约、`m7-drift` run、回流与三条重训条件、告警渠道与定时检查、注入演练与调参（ADR 0008 / 0016 / 0018）。
+- M8 底座：三包 + import 契约 + AST 测试、七份 YAML 强校验、33 字段特征目录、清洗规则注册表、五道门（覆盖率门槛 85）、424 项测试、`AGENTS.md`、基线封条与 tag 回放（ADR 0004）。
+- M9 文档：本文档、22 份 ADR（0001–0023，缺 0009）、9 张模块卡、26 张步骤卡、5 张组件卡、贡献表。
+- 讲义对照步：A1 地基与守门、A2 基线与考卷与回放、C-L1a 名额策略与指标出口、C-L1b 特征工程/模型工厂/解释一致性、C-L1c 追踪协议与两个后端、C-L2a 评估报全、C-L2b 算法注册表与一致性参照、C-L2c 模型与规则的名额取舍、C-L3a 校准与切片、D-L1 模型包血统、D-L2/D-L3 注册表与审计、E-L2 热加载与指标、F-L2 预测记录 v2 与回流、F6 告警与定时检查、F7 故障演练、C-L3b 调参。B-L2 的 sources/cleaning/builder/reconcile 四段在 M2 里一次落地，映射写在 `docs/steps/README.md`。
 
 ### 7.2 没做（以及为什么）
 
@@ -296,3 +302,17 @@ bank/
 | ADR 0006 | 模型包六项契约、校验和、staging 原子写、`current.json` 回退 |
 | ADR 0007 | 请求模型由模型包生成、`Literal` 内联枚举、422 的 `loc` 口径 |
 | ADR 0008 | 漂移只看 15 输入 + score、阈值 0.1/0.25、回流与三条重训条件 |
+| ADR 0010 | 对账点 1 从原始库内存重算，与冻结账单逐项比，不写盘 |
+| ADR 0011 | 13 指标自洽、两种名额口径并列、200 次重抽区间、报告进运行 |
+| ADR 0012 | 校准只报告不拟合；切片名额按比例、少于 100 人不报 |
+| ADR 0013 | 四状态注册表、门禁先行、审计先行、别名回退；封存集设计好但不切 |
+| ADR 0014 | v2 预测记录只留 `features_hash`；对照组按 request_id 哈希确定性抽 |
+| ADR 0015 | 按 `current.json` 文本热加载；坏包保留旧版本；`/metrics` 服务指标 |
+| ADR 0016 | 注入已知漂移必须响、没动的列不许误报；调参只在训练期内层窗口 |
+| ADR 0017 | 模型没有比规则多抓人；名额放宽换召回；主模型仍选 LR |
+| ADR 0018 | 告警检查与投递分离；渠道失败降级；连续两轮越线才建议重训 |
+| ADR 0019 | 一文件一算法 + 注册表；参照冻结四项指标与逐条分数指纹 |
+| ADR 0020 | 模型包记 runtime 四版本；sklearn 主次/Python 主版本不一致拒绝加载 |
+| ADR 0021 | Tracker 协议 + 两个后端；只有适配文件能 import mlflow，AST 测试守 |
+| ADR 0022 | 解释必须能加回分数（Σ贡献+截距==logit），否则不许导出与展示 |
+| ADR 0023 | 名额策略 capacity_quantile；阈值存原始 float；导出复核名额 |
