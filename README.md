@@ -40,7 +40,10 @@
 .venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
 .venv\Scripts\python.exe -m bank_api          # 起服务；换模型只改 current.json，不用重启
 
-# 10) 测试与质量门（交付前最后一关；pytest 305 项、覆盖率门槛 85）
+# 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
+.venv\Scripts\python.exe -m bank_training.compare
+
+# 10) 测试与质量门（交付前最后一关；pytest 314 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -134,6 +137,18 @@
 | 反证：两边各自分位数 | PSI < 0.1（看不见） | 0.0233 |
 
 `python -m bank_training.tune` 只在训练期内部切分（拟合段 7,341 行 / 内层评估 10,196 行），四个 C 的内层 AP 差 0.0094（< 噪声线 0.01），结论是**不改** `configs/model.yaml`。
+
+## 模型 vs 规则：名额取舍（C-L2c）
+
+`python -m bank_training.compare` 把模型与规则基线放在同一份验证集上，名额按 10% / 15% / 20% 各算一遍（验证集 3,556 行 / 正例 1,782）：
+
+| 名额比例 | 名额人数 | 逻辑回归抓到 | 名额内精确率 | 名额内召回率 | 规则基线抓到 | 名额内精确率 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10% | 356 | 264 | 0.7416 | 0.1481 | 272 | 0.7640 |
+| 15% | 533 | 403 | 0.7561 | 0.2262 | 407 | 0.7636 |
+| 20% | 711 | 537 | 0.7553 | 0.3013 | 550 | 0.7736 |
+
+两句话必须如实说：**模型在这份验证集上没有比规则多抓人**（少 8 / 4 / 13 人，都在一个标准误以内）；**名额从 10% 放到 20%，精确率几乎不动（0.7416→0.7553），召回翻倍（0.1481→0.3013）**。模型真正的优势在概率校准（Brier 0.2852 vs 0.4924）。理由与取舍写进 `docs/adr/0017-模型与规则的名额取舍.md`，输出 `data/processed/compare.{md,json}`。
 
 ## 目录
 
