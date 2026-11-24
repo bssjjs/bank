@@ -101,11 +101,12 @@ models/serving/              模型包，每版一个目录，不覆盖
 scripts/                     ci.py 质量门；freeze_baseline.py 基线封条；replay_steps.py 按 tag 回放
 baselines/                   第一轮结果的文件封条：v1/ 快照 + SHA256SUMS
 tests/unit|contract|architecture|service|exam
-docs/                        problem/spec/data_card/pitfalls/architecture/model_card
+docs/                        problem/spec/data_card/pitfalls/architecture/model_card/demo
 docs/adr/                    决策记录，0001 起编号，一份一个决定
 docs/modules/                模块卡：目标 / 验收 / 不做
 docs/steps/                  步骤卡：每步三行（目标/验收/不做），文件名对应 tag（含讲义步 C-L2a/F-L2 等）
-docs/cards/                  组件卡：指纹 / 配置 / 特征目录，每张九节
+docs/cards/                  组件卡：指纹 / 配置 / 特征目录 / 服务 / 告警，每张九节
+docs/demo.md                 演示单：八步命令 + 期望输出 + 失败时查哪里（答辩用）
 ```
 
 - 代码只在 `packages/core/src/bank`（导入名仍是 `bank`，由 uv workspace 以 editable 装进 `.venv`）。`packages/training` 与 `packages/api` 的导入名分别是 `bank_training`、`bank_api`。**不要在别处再放一份规则或另起一个 `src/`**；迁移的取舍写在 `docs/adr/0004-三包结构与依赖方向.md`。
