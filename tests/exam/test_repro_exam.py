@@ -10,7 +10,9 @@
 
 from __future__ import annotations
 
+import atexit
 import hashlib
+import shutil
 import unittest
 import uuid
 from datetime import date, datetime
@@ -34,9 +36,20 @@ SCRATCH = ROOT / ".tmp" / "exam"
 ABC = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 EMPTY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
+_cleanup_registered = False
+
 
 def scratch_file(name: str, data: bytes) -> Path:
+    """造一个临时文件，进程退出时连同父目录一起删掉。
+
+    「大文件按 1 MiB 分块」那道题每次会写一个 1 MB 的 big.bin；早先版本写完不删，
+    跑几百次测试就把 .tmp/exam 撑到 139 MB。这里注册一次 atexit，别让它再漏。
+    """
+    global _cleanup_registered
     SCRATCH.mkdir(parents=True, exist_ok=True)
+    if not _cleanup_registered:
+        atexit.register(shutil.rmtree, SCRATCH, True)
+        _cleanup_registered = True
     path = SCRATCH / f"{uuid.uuid4().hex}-{name}"
     path.write_bytes(data)
     return path
