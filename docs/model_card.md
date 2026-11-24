@@ -1,8 +1,10 @@
 # 模型卡：电话营销认购倾向（逻辑回归 B 集）
 
-- 版本：`m3-1.0.0`（M4 起由 ModelBundle 携带同一版本号）
+- 版本：模型 `m3-1.1.0`；模型包 `models/serving/1.1.0` 为 production（`1.0.0` 降为 staging）
+- 模型包血统：`bundle.json` 的 `runtime` 记 python 3.12.16 / sklearn 1.9.1 / pandas 3.1.1 / numpy 2.5.5；sklearn 主次版本或 Python 主版本不一致时拒绝加载（ADR 0020）
 - 训练日期：2026-11-22
 - 训练来源：`python -m bank_training.train`；mlflow 实验 `bank-marketing`，主模型 run `60741fa06a4049c49942bb12fc9fe88a`
+- 模型包 run：`python -m bank_training.export --version 1.1.0 --promote` → run `7530c4281634419fa243470de1be3305`
 - 数据集指纹：`train.parquet` 内容指纹 `03832a96…`、`valid.parquet` `d680004e…`（见 `data/frozen/FROZEN.json`）
 - 代码位置：`packages/training/src/bank_training/`（Pipeline、指标、解释、实验）
 
@@ -54,6 +56,13 @@ ROC-AUC `[0.6262, 0.6654]`、Brier `[0.2750, 0.2938]`。区间只说明这 3,556
 对照物（同一验证集、同一名额）：规则打分 AP 0.6412 / 名额内精确 0.7640 / Brier 0.4924；随机森林+特征集 A AP 0.6229 / 0.7500；逻辑回归+特征集 A AP 0.5959 / 0.6180。
 
 局限：名额内精确率 74.2%，比 `docs/problem.md` 定的 75% 低 0.8 个百分点——目标没改，如实记在这里；规则基线的 76.4% 达标，但概率质量不可用。取舍见 ADR 0005。
+
+## 4b. 决策规则（名额制，A 口径）
+
+- 名额 = 验证集行数 × `configs/base.yaml` 的 `quota.frac`（0.10）= 356 人；策略名与次优带宽度在 `configs/decision.yaml`，强校验（ADR 0023）。
+- 切点是**验证集上真实存在的分数分位数**（`method="higher"`，不插值、不四舍五入）：`优先 ≥ 0.57298`（正好 356 人）、`备选 ≥ 0.253228`（再覆盖到 40% 分位，共 1,422 人）、其余不建议。
+- 发布时复核：按切点选中的人数与名额差超过 1 人，`export.py` 直接拒绝发布（`_gate` 第 5 条）。
+- 阈值不是概率：训练期正例率 13%、验证期 50%，0.57 不代表 57% 的认购概率。
 
 ## 5. 校准与漂移（必须读）
 
