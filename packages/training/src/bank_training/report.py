@@ -10,11 +10,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from bank_training import calibration as C
 from bank_training import metrics as M
+from bank_training import slices as SL
 
 #: 指标的中文说明与显示格式；顺序即报告里的顺序。
 METRIC_ROWS: tuple[tuple[str, str, str], ...] = (
@@ -54,6 +57,9 @@ class Report:
     views: dict[str, dict[str, float]] = field(default_factory=dict)
     comparisons: Sequence[Comparison] = ()
     notes: Sequence[str] = ()
+    calibration: dict[str, float] = field(default_factory=dict)
+    reliability: Sequence[dict[str, float]] = ()
+    slices: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 def _pct(value: float) -> str:
@@ -75,11 +81,19 @@ def build(
     intervals: dict[str, tuple[float, float]] | None = None,
     samples: int = M.CI_SAMPLES,
     seed: int = M.SEED,
+    frame: pd.DataFrame | None = None,
 ) -> Report:
-    """算全 13 指标、两种口径与区间，打包成 `Report`（纯函数，不写文件）。"""
+    """算全 13 指标、两种口径与区间，打包成 `Report`（纯函数，不写文件）。
+
+    给了 `frame`（必须与 `y_true`/`score` 逐行对齐）就顺带算校准表与切片表；
+    没给就只有指标部分，切片留空。
+    """
     metrics = M.evaluate(y_true, score, quota_n)
     if intervals is None:
         intervals = M.bootstrap_ci(y_true, score, quota_n, samples=samples, seed=seed)
+    calibration = C.summary(y_true, score)
+    reliability = C.reliability(y_true, score)
+    tables = SL.default_tables(frame, score=score, quota_n=quota_n) if frame is not None else {}
     return Report(
         title=title,
         n=int(metrics["n"]),
@@ -91,6 +105,9 @@ def build(
         views=M.two_views(y_true, score, quota_n),
         comparisons=tuple(comparisons),
         notes=tuple(notes),
+        calibration=calibration,
+        reliability=tuple(reliability),
+        slices=tables,
     )
 
 
@@ -151,6 +168,35 @@ def render(report: Report) -> str:
                 f"{m['ap']:.4f} | {m['roc_auc']:.4f} | {m['brier']:.4f} | "
                 f"{m['tp_at_quota']:.0f} |"
             )
+    if report.calibration:
+        gap = report.calibration["base_rate"] - report.calibration["mean_score"]
+        line_one = (
+            f"- 平均分 {report.calibration['mean_score']:.4f}，"
+            f"基率 {report.calibration['base_rate']:.4f}，两者差 {gap:.4f}"
+        )
+        line_two = (
+            f"- Brier {report.calibration['brier']:.4f}，"
+            f"ECE {report.calibration['ece']:.4f}，"
+            f"最偏的一箱 {report.calibration['worst_bin']} 差 "
+            f"{report.calibration['worst_gap']:.4f}"
+        )
+        line_three = (
+            "- 只报告、不校准：验证集不许用来拟合校准器（那等于拿验证集调参），"
+            "等线上攒够回流标签再单独做。"
+        )
+        lines += [
+            "",
+            "## 校准（分数说多少 vs 实际是多少）",
+            "",
+            line_one,
+            line_two,
+            line_three,
+            "",
+        ]
+        lines += C.render(report.calibration, list(report.reliability))
+    if report.slices:
+        lines += ["", "## 切片（模型对谁不够好）", ""]
+        lines += SL.render(report.slices)
     if report.notes:
         lines += ["", "## 怎么读这张表", ""]
         lines += [f"- {note}" for note in report.notes]

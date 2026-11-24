@@ -90,8 +90,9 @@ def _main_report(
     run_id: str,
     feature_set: str,
     quota_frac: float,
+    frame: pd.DataFrame,
 ) -> tuple[Path, dict[str, tuple[float, float]]]:
-    """给主模型出一份 Markdown 评估报告：13 指标 + 95% 区间 + 两种口径 + 对照表。"""
+    """给主模型出一份 Markdown 评估报告：13 指标 + 区间 + 两种口径 + 校准 + 切片 + 对照。"""
     comparisons = [
         R.comparison(row["name"], {k: v for k, v in row.items() if k != "name"})
         for row in rows
@@ -108,6 +109,10 @@ def _main_report(
         "它只说明这批数据的抖动幅度，不是上线后的保证。"
     )
     note_views = "两种口径选中人数不同：名额口径固定 356 人，阈值 0.5 口径随分数分布变。"
+    note_slices = (
+        "切片里的名额按该切片人数比例分配（k = 人数 × 名额比例，四舍五入），"
+        "所以人数少的切片名额也少、数字更抖；少于 100 人的切片不报。"
+    )
     built = R.build(
         title=f"评估报告：{main_name}（特征集 {feature_set}）",
         y_true=y_valid,
@@ -115,7 +120,8 @@ def _main_report(
         quota_n=quota_n,
         comparisons=comparisons,
         intervals=intervals,
-        notes=(note_quota, note_drift, note_ci, note_views),
+        notes=(note_quota, note_drift, note_ci, note_views, note_slices),
+        frame=frame,
     )
     path = R.write(S.ROOT / "data" / "processed" / "evaluation_report.md", built)
     mlflow.log_artifact(str(path), artifact_path="evaluation", run_id=run_id)
@@ -246,6 +252,7 @@ def main() -> int:
         run_id=run_ids[main_name],
         feature_set=feature_set,
         quota_frac=cfg.quota.frac,
+        frame=valid,
     )
     print("主模型 95% 区间（200 次按行重抽）：")
     for name in ("precision_at_quota", "recall_at_quota", "ap", "roc_auc", "brier"):
