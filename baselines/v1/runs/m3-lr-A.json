@@ -1,9 +1,15 @@
 {
   "metrics": {
+    "accuracy_at_quota": 0.522497,
     "ap": 0.595907,
     "base_rate": 0.501125,
     "brier": 0.310405,
+    "ece": 0.251296,
+    "f1_at_quota": 0.2058,
+    "fn_at_quota": 1562.0,
+    "fp_at_quota": 136.0,
     "lift_at_quota": 1.2332,
+    "log_loss": 0.884227,
     "n": 3556.0,
     "positives": 1782.0,
     "precision_at_quota": 0.617978,
@@ -11,10 +17,12 @@
     "recall_at_quota": 0.123457,
     "roc_auc": 0.611611,
     "score_mean": 0.252549,
+    "t05_f1": 0.24921,
     "t05_precision": 0.637413,
     "t05_recall": 0.154882,
     "t05_selected": 433.0,
-    "t05_threshold": 0.5
+    "t05_threshold": 0.5,
+    "tp_at_quota": 220.0
   },
   "params": {
     "c": 1.0,
@@ -34,7 +42,7 @@
     "config_fingerprint": "d5259bab64704229",
     "cut": "2009-10-01",
     "data_fingerprint": "03832a965af75565",
-    "git_sha": "15b29e9139cb98e0230faba2547d83df858989f0",
+    "git_sha": "f9e28c52fd6799d7482182c2bdf169a23dd50607",
     "window": "2008-11-01~2010-11-17"
   }
 }

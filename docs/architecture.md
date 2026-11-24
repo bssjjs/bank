@@ -37,6 +37,7 @@
 | 清洗规则带命中行数 | 注册表 `REGISTRY` 7 条规则，逐条计 `rows`，致命/记账分开 | `clean.py` + `rules.py` | `docs/spec.md` §7 | `python -m bank.freeze` |
 | 时间切分与缓冲 | 月份→日期重建、`<cut` 训练 / `≥cut` 验证、缓冲落月份边界 | `timeaxis.py` + `split.py` | ADR 0002 | `tests/unit/test_freeze.py` |
 | 内容指纹与冻结 | 规范化 CSV 的 sha256 + 文件封条 `FROZEN.json` | `repro.py` + `freeze.py` | ADR 0003 | `python -m bank.freeze --check` |
+| 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
 | 对账点 1（独立于冻结产物） | 从原始库内存重算 → 与 `manifest.json` 逐项比 22 项，不一致退出 1，不写盘 | `reconcile.py` | ADR 0010 | `python -m bank.reconcile` |
 | 两条基线 | 规则加权打分 + 逻辑回归，同一验证集同一名额 | `baselines.py` + `train.py` | `docs/model_card.md` | `python -m bank_training.train` |
 | 名额制决策 | `quota_n = ceil(n_valid × frac)`，验证集算名额 | `metrics.py` + `config.py` | ADR 0002 / 0005 | `python -m bank_training.train` |

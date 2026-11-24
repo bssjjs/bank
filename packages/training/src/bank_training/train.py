@@ -26,6 +26,8 @@ from bank.catalog import load_catalog
 from bank.config import load_config
 from bank.repro import git_sha
 
+from bank_training import metrics as metrics_mod
+from bank_training import report as R
 from bank_training.baselines import WEIGHTS, rule_score
 from bank_training.data import load_frozen, split_xy
 from bank_training.metrics import evaluate, threshold_metrics
@@ -77,6 +79,49 @@ def _param(value: Any) -> str | int | float | bool:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _main_report(
+    *,
+    main_name: str,
+    label: str,
+    y_valid: pd.Series,
+    score: np.ndarray,
+    quota_n: int,
+    rows: list[dict[str, Any]],
+    run_id: str,
+    feature_set: str,
+    quota_frac: float,
+) -> tuple[Path, dict[str, tuple[float, float]]]:
+    """给主模型出一份 Markdown 评估报告：13 指标 + 95% 区间 + 两种口径 + 对照表。"""
+    comparisons = [
+        R.comparison(row["name"], {k: v for k, v in row.items() if k != "name"})
+        for row in rows
+        if row["name"] != label
+    ]
+    intervals = metrics_mod.bootstrap_ci(y_valid, score, quota_n)
+    note_quota = f"名额 {quota_n} 人 = 验证集 {len(y_valid):,} 人 × {quota_frac:.0%}（base.yaml）"
+    note_drift = (
+        "验证集是 2009-10 以后的数据、正例率约 50%，训练期只有 13%——分数系统性偏低、"
+        "Brier 与 ECE 会难看，这是时期漂移不是 bug（ADR 0005 与模型卡）。"
+    )
+    note_ci = (
+        "95% 区间是 200 次按行重抽的分位区间，名额按比例跟着行一起缩放；"
+        "它只说明这批数据的抖动幅度，不是上线后的保证。"
+    )
+    note_views = "两种口径选中人数不同：名额口径固定 356 人，阈值 0.5 口径随分数分布变。"
+    built = R.build(
+        title=f"评估报告：{main_name}（特征集 {feature_set}）",
+        y_true=y_valid,
+        score=score,
+        quota_n=quota_n,
+        comparisons=comparisons,
+        intervals=intervals,
+        notes=(note_quota, note_drift, note_ci, note_views),
+    )
+    path = R.write(S.ROOT / "data" / "processed" / "evaluation_report.md", built)
+    mlflow.log_artifact(str(path), artifact_path="evaluation", run_id=run_id)
+    return path, intervals
+
+
 def main() -> int:
     cfg = load_config()
     mcfg = load_model_config()
@@ -107,6 +152,9 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     run_ids: dict[str, str] = {}
+    main_name = f"m3-{mcfg.model.kind}-主模型"
+    main_y: pd.Series | None = None
+    main_score: np.ndarray | None = None
 
     score = rule_score(valid).to_numpy(dtype="float64")
     run_id, metrics = _log_run(
@@ -156,7 +204,10 @@ def main() -> int:
             artifacts={"model": str(model_path)},
         )
         run_ids[name] = run_id
-        label = "主模型 LR-B" if name.endswith("主模型") else f"{kind.upper()}-{subset}"
+        if name == main_name:
+            main_y = y_valid
+            main_score = np.asarray(score, dtype="float64")
+        label = "主模型 LR-B" if name == main_name else f"{kind.upper()}-{subset}"
         rows.append({"name": label, **metrics})
 
     RUNS_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -182,6 +233,24 @@ def main() -> int:
             f"{row['brier']:>9.4f}{tp:>11d}"
         )
     print(f"mlflow：{TRACKING_URI}（实验 {EXPERIMENT}，{len(run_ids)} 个 run）")
+
+    if main_y is None or main_score is None:
+        raise AssertionError("主模型没有被训练：检查 configs/model.yaml 的 kind")
+    report_path, intervals = _main_report(
+        main_name=main_name,
+        label="主模型 LR-B",
+        y_valid=main_y,
+        score=main_score,
+        quota_n=quota_n,
+        rows=rows,
+        run_id=run_ids[main_name],
+        feature_set=feature_set,
+        quota_frac=cfg.quota.frac,
+    )
+    print("主模型 95% 区间（200 次按行重抽）：")
+    for name in ("precision_at_quota", "recall_at_quota", "ap", "roc_auc", "brier"):
+        print(f"  {name:<20}{metrics_mod.format_ci(intervals[name])}")
+    print(f"评估报告：{report_path.relative_to(S.ROOT)}（已记进 mlflow run）")
     print(f"run_id 已写入 {RUNS_JSON.relative_to(S.ROOT)}")
     return 0
 

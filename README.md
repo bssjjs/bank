@@ -35,7 +35,7 @@
 # 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
 .venv\Scripts\python.exe -m bank_training.drift
 
-# 10) 测试与质量门（交付前最后一关；pytest 224 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 240 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -56,6 +56,8 @@
 | 验证集 | `≥ 2009-10-01`，3,556 行 / 1,782（50.11%） |
 | 每日名额 | 356 人（验证集 3,556 × 10%，向上取整） |
 | 清洗 | 7 条规则命中 5 行，全是 R3 记账，无删行 |
+
+评估报全：13 个互相自洽的指标（名额 8 + 排序 2 + 校准 3）、两种名额口径并列、200 次按行重抽的 95% 区间、Markdown 报告 `data/processed/evaluation_report.md` 随主模型 run 记进 mlflow。
 
 主模型结果（`python -m bank_training.train` 输出，验证集 3,556 人 / 名额 356 人）：
 

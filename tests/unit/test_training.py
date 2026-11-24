@@ -10,9 +10,11 @@ import pandas as pd
 from bank import schema as S
 from bank.catalog import load_catalog
 from bank.explain import explain_one
+from bank_training import metrics as M
+from bank_training import report as R
 from bank_training.baselines import rule_score
 from bank_training.data import load_frozen, split_xy
-from bank_training.metrics import evaluate, threshold_metrics
+from bank_training.metrics import evaluate, threshold_metrics, two_views
 from bank_training.model_config import ModelConfigError, load_model_config
 from bank_training.pipeline import build_model
 
@@ -127,6 +129,99 @@ class ModelConfigTest(unittest.TestCase):
             load_model_config(
                 _write("schema_version: 1\nmodel:\n  kind: lr\n  c: 1.0\n  max_iter: 5\n")
             )
+
+
+class MetricsConsistencyTest(unittest.TestCase):
+    """10 行的手算例子：13 个指标逐项对上手算值（讲义 C-L2a 的验收要求）。"""
+
+    def setUp(self) -> None:
+        self.y = np.array([0, 0, 1, 0, 1, 0, 1, 1, 0, 1])
+        self.score = np.array([0.5, 0.4, 0.9, 0.3, 0.8, 0.2, 0.7, 0.65, 0.1, 0.6])
+        self.got = evaluate(self.y, self.score, quota_n=4)
+
+    def test_confusion_matches_hand_count(self) -> None:
+        # 前 4 名是下标 2/4/6/7，全是正例 → tp=4、fp=0、fn=1、tn=5
+        self.assertEqual(self.got["tp_at_quota"], 4.0)
+        self.assertEqual(self.got["fp_at_quota"], 0.0)
+        self.assertEqual(self.got["fn_at_quota"], 1.0)
+        self.assertEqual(self.got["tp_at_quota"] + self.got["fp_at_quota"], 4.0)
+        self.assertEqual(self.got["tp_at_quota"] + self.got["fn_at_quota"], 5.0)
+
+    def test_quota_metrics_match_hand_value(self) -> None:
+        self.assertAlmostEqual(self.got["precision_at_quota"], 1.0, places=6)
+        self.assertAlmostEqual(self.got["recall_at_quota"], 0.8, places=6)
+        self.assertAlmostEqual(self.got["f1_at_quota"], 2 * 1.0 * 0.8 / 1.8, places=6)
+        self.assertAlmostEqual(self.got["lift_at_quota"], 2.0, places=4)
+        self.assertAlmostEqual(self.got["accuracy_at_quota"], 0.9, places=6)
+        self.assertAlmostEqual(self.got["base_rate"], 0.5, places=6)
+
+    def test_ranking_and_calibration_match_hand_value(self) -> None:
+        self.assertAlmostEqual(self.got["roc_auc"], 1.0, places=6)
+        self.assertAlmostEqual(self.got["ap"], 1.0, places=6)
+        self.assertAlmostEqual(self.got["brier"], 0.09725, places=6)
+        self.assertAlmostEqual(self.got["log_loss"], 0.351593, places=5)
+        self.assertAlmostEqual(self.got["ece"], 0.285, places=6)
+
+    def test_two_views_differ_in_selected_count(self) -> None:
+        views = two_views(self.y, self.score, quota_n=4, threshold=0.5)
+        self.assertEqual(views["top_k"]["selected"], 4.0)
+        self.assertEqual(views["fixed_threshold"]["selected"], 6.0)
+        self.assertAlmostEqual(views["fixed_threshold"]["precision"], 5 / 6, places=6)
+        self.assertAlmostEqual(views["fixed_threshold"]["recall"], 1.0, places=6)
+
+    def test_empty_and_short_inputs_raise(self) -> None:
+        with self.assertRaises(ValueError):
+            evaluate(np.array([], dtype="int8"), np.array([]), quota_n=1)
+
+
+class BootstrapTest(unittest.TestCase):
+    def test_same_seed_same_interval_and_order(self) -> None:
+        _, valid = _toy()
+        y = valid[S.TARGET].to_numpy()
+        score = np.linspace(0, 1, len(y))
+        first = M.bootstrap_ci(y, score, quota_n=10, samples=20, seed=7)
+        again = M.bootstrap_ci(y, score, quota_n=10, samples=20, seed=7)
+        self.assertEqual(first, again)
+        for low, high in first.values():
+            self.assertLessEqual(low, high)
+
+    def test_different_seed_changes_interval(self) -> None:
+        _, valid = _toy()
+        y = valid[S.TARGET].to_numpy()
+        score = np.linspace(0, 1, len(y))
+        a = M.bootstrap_ci(y, score, quota_n=10, samples=20, seed=1)
+        b = M.bootstrap_ci(y, score, quota_n=10, samples=20, seed=2)
+        self.assertNotEqual(a["ap"], b["ap"])
+
+
+class ReportTest(unittest.TestCase):
+    def test_render_has_all_sections(self) -> None:
+        y = np.array([0, 0, 1, 0, 1, 0, 1, 1, 0, 1])
+        score = np.array([0.5, 0.4, 0.9, 0.3, 0.8, 0.2, 0.7, 0.65, 0.1, 0.6])
+        metrics = evaluate(y, score, quota_n=4)
+        built = R.Report(
+            title="测试报告",
+            n=10,
+            positives=5,
+            quota_n=4,
+            base_rate=0.5,
+            metrics=metrics,
+            views=two_views(y, score, 4),
+            comparisons=(R.Comparison("规则基线", metrics),),
+            notes=("这是一条说明",),
+        )
+        text = R.render(built)
+        self.assertIn("# 测试报告", text)
+        self.assertIn("## 13 个指标", text)
+        self.assertIn("名额内精确率", text)
+        self.assertIn("## 两种名额口径", text)
+        self.assertIn("## 对照", text)
+        self.assertIn("这是一条说明", text)
+        self.assertIn("—", text)  # 没有区间时那一列是占位符
+
+    def test_comparison_rejects_missing_metric(self) -> None:
+        with self.assertRaises(KeyError):
+            R.comparison("坏的对照", {"precision_at_quota": 1.0})
 
 
 def _write(text: str) -> Path:

@@ -1,9 +1,15 @@
 {
   "metrics": {
+    "accuracy_at_quota": 0.551744,
     "ap": 0.64123,
     "base_rate": 0.501125,
     "brier": 0.492406,
+    "ece": 2.925759,
+    "f1_at_quota": 0.254443,
+    "fn_at_quota": 1510.0,
+    "fp_at_quota": 84.0,
     "lift_at_quota": 1.5247,
+    "log_loss": 6.802857,
     "n": 3556.0,
     "positives": 1782.0,
     "precision_at_quota": 0.764045,
@@ -11,10 +17,12 @@
     "recall_at_quota": 0.152637,
     "roc_auc": 0.650954,
     "score_mean": 3.421822,
+    "t05_f1": 0.669436,
     "t05_precision": 0.50441,
     "t05_recall": 0.994949,
     "t05_selected": 3515.0,
-    "t05_threshold": 0.5
+    "t05_threshold": 0.5,
+    "tp_at_quota": 272.0
   },
   "params": {
     "model": "rule",
@@ -37,7 +45,7 @@
     "config_fingerprint": "d5259bab64704229",
     "cut": "2009-10-01",
     "data_fingerprint": "03832a965af75565",
-    "git_sha": "15b29e9139cb98e0230faba2547d83df858989f0",
+    "git_sha": "f9e28c52fd6799d7482182c2bdf169a23dd50607",
     "window": "2008-11-01~2010-11-17"
   }
 }

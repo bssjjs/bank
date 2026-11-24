@@ -45,8 +45,8 @@
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - `bank.reconcile` 是对账点 1：**不读冻结的 parquet**，直接从原始库重切一遍，再和 `data/frozen/manifest.json` 的账单逐项比（源文件指纹、配置指纹、原始行数/正例/列清单、窗口、两表行数/正例/内容指纹/日期范围、名额、特征数、目录一致性）。必须打印「对账通过：从原始库重建的两表与冻结账单逐项一致」，退出码 0；任何一项不一致就退出 1，且不回写冻结数据。它和 `--check` 不同：`--check` 比「今天重跑 vs 冻结」，`reconcile` 比「账单 vs 重建」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（231 项），按目录分：unit 124 / contract 6 / service 12 / architecture 37 / exam 52。
-  - unit 124：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、注册表 5、训练 11、模型包 12、漂移 11、对账 7。
+- `pytest tests` 必须全过（240 项），按目录分：unit 133 / contract 6 / service 12 / architecture 37 / exam 52。
+  - unit 133：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、注册表 5、训练 20（含 13 指标手算、区间、报告）、模型包 12、漂移 11、对账 7。
   - contract 6：OpenAPI 的必填/范围/枚举/批量上限与模型包对账。
   - service 12：探针、字段级 422、批量上限、预测记录、无包时 503（干净检出时 `tests/support.py` 会先导出一个模型包）。
   - architecture 37：依赖方向与包布局 10、质量门守门 15、基线封条 8、回放 tag 4。
