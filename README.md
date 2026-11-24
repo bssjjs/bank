@@ -32,7 +32,7 @@
 # 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
 .venv\Scripts\python.exe -m bank_training.drift
 
-# 10) 测试与质量门（交付前最后一关；pytest 225 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 224 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 

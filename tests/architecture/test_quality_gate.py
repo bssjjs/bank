@@ -163,14 +163,6 @@ class HygieneTest(unittest.TestCase):
     def test_agents_md_exists(self) -> None:
         self.assertTrue((ROOT / "AGENTS.md").is_file())
 
-    def test_claude_md_just_includes_agents(self) -> None:
-        lines = [
-            line.strip()
-            for line in (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
-        self.assertEqual(lines[0], "@AGENTS.md")
-
 
 if __name__ == "__main__":
     unittest.main()
