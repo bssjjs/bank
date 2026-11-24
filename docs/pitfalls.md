@@ -1,6 +1,8 @@
-# 踩坑清单（M1）
+# 踩坑清单
 
 > 只记**真踩过**的坑：每条都写清「当时怎么想的 / 为什么错了 / 怎么发现的 / 现在怎么挡」。答辩问"你们踩过什么坑"，念这一页，不要念套话。
+>
+> 第 1–9 条来自 M1 的口径阶段（2026-11-22），第 10–15 条来自后面补工程底座、基线封条、回放与讲义步的阶段（2026-11-23 ~ 24）——按坑出现的顺序追加，不回头改旧条目。
 
 ## 1. 以为没有年份列就只能随机切分
 
@@ -73,3 +75,51 @@
 - 怎么发现的：写决策规则时被问"名额人数怎么算的"，回头核对分母。
 - 现在怎么挡：`spec.md` 第 5 节写死 `quota_n = ceil(n_valid × 0.10) = 356`，M3 训练时打印验证集行数、名额人数、入选人数三个数，三者对不上即报错。
 - 教训：**任何比例都要写清分母是谁**，并且在运行时打印出来。
+
+## 10. 基线封条在 clone 之后对不上
+
+- 当时怎么想的：`scripts/freeze_baseline.py --write` 算的是工作区文件的 sha256，提交、clone 回来自然一样。
+- 为什么错了：mlflow 写出的 JSON 是 CRLF 行尾，`.gitattributes` 里 `* text=auto eol=lf` 会在提交时把它改成 LF —— 索引里的字节和工作区里的字节不是同一串，封条必红。
+- 怎么发现的：`--check` 在工作区通过，换一个干净 worktree 就跑 `baselines/` 校验失败；`git cat-file -p :<path> | sha256` 与磁盘文件不一致。
+- 现在怎么挡：`freeze_baseline.py::_snapshot` 先把 JSON `json.loads` 再以 `json.dumps(ensure_ascii=False, indent=2) + "\n"`、`newline="\n"` 重写，封条算的是规范化之后的字节；测试里用 `git cat-file -p :<path>` 与磁盘逐字节比。
+- 教训：**凡是"算字节"的东西，都要问一句"它经过 Git 了吗"**。要么规范化后再算，要么连行尾一起锁死。
+
+## 11. 临时目录在 Windows 沙箱里删不掉
+
+- 当时怎么想的：单测用 `tempfile.TemporaryDirectory()`，标准库自己清理，最省事。
+- 为什么错了：本机的 TEMP 与工作目录被沙箱 ACL 挡着，`TemporaryDirectory` 退出时 `chmod`/`rmtree` 抛 `PermissionError: [WinError 5]`；更隐蔽的是 `NamedTemporaryFile` 会把文件**落到仓库根目录**，跑一次测试多四个 `tmp*.yaml`。
+- 怎么发现的：`git status` 里凭空出现 `tmp5dfbdm7c.yaml` 这类文件；测试偶尔以 `PermissionError` 收尾。
+- 现在怎么挡：所有测试临时目录固定写 `S.ROOT/".tmp"/<用例名>/<uuid4>`，用 `addCleanup(shutil.rmtree, path, True)` 忽略清理失败；`.tmp/` 在 `.gitignore` 里。
+- 教训：**测试不要把文件写到仓库外面**，尤其当"仓库外面"是别人（沙箱、系统 TEMP）的地盘。
+
+## 12. 先打 tag 后补步骤卡，回放必红
+
+- 当时怎么想的：功能提交完就 `git tag step-X`，步骤卡（`docs/steps/X.md`）等有空再补。
+- 为什么错了：`tests/architecture/test_replay.py` 有两条守门断言——每个 `step-*` tag 必须有 `docs/steps/<tag 去掉 step->.md`；每个 tag 必须是主分支历史的祖先。回放在**干净 worktree**里跑，那里只有 tag 当时的文件：卡没提交就查不到；`HEAD` 是那个 tag 自己，"祖先"断言也会把之后的 tag 判成不存在。
+- 怎么发现的：`step-C-L2c`、`step-D-L1` 回放先后红，日志 `AssertionError: False is not true : 缺 docs/steps/D-L1.md` 与 `test_every_tag_is_ancestor_of_head`。
+- 现在怎么挡：卡与提交同批进（或提交后再打 tag）；回放脚本把 tip 的 `docs/steps/` 与 `test_replay.py` 拷进 worktree（卡是回写的，规则是"tag 集合"的规则）；祖先检查改成 `main`（`trunk()`）而不是 `HEAD`。
+- 教训：**回放测的应该是"这个 tag 的代码能不能过门"，不是"这个 tag 有没有今天的文档"**。两者混在一起，越老的 tag 越红。
+
+## 13. 自己的"消音"写法被卫生测试抓到
+
+- 当时怎么想的：drill 里要用漂移模块的私有函数，写个 `# noqa: SLF001` 最省事；契约测试里类型对不上，写个 `# type: ignore[index]` 就过了。
+- 为什么错了：AGENTS 第三条明令不许用 `# type: ignore` / `# noqa` 让检查闭嘴；`tests/architecture/test_quality_gate.py` 用 `tokenize` 扫 COMMENT token，专门抓这两个词——它当场抓到了我自己。
+- 怎么发现的：`pytest tests` 红，`HygieneTest::test_no_suppression_comments_in_source` 直接点名三个文件。
+- 现在怎么挡：把私有函数改成公开名字（`drift.shares` / `drift.psi_from_shares`）、把 `dict[str, object]` 改成 `dict[str, Any]` 并显式标注返回类型；删除全部 ignore/noqa。
+- 教训：**"先让它闭嘴"是最贵的省事**——消音一次，以后没人知道那行为什么被放过。
+
+## 14. 阈值四舍五入，把边界上的人挤出去
+
+- 当时怎么想的：切点写 6 位小数，够精确了，JSON 也好看。
+- 为什么错了：名额边界是"第 356 名的分数"。四舍五入后，0.5729804 变成 0.57298，恰好等于边界的另一个人会被拉进来或者挤出去——名额多一个少一个，精确率就变。
+- 怎么发现的：切点改成"名额内全部"口径后，用 `Bundle.level` 复算选中人数，发现与名额差 1 人；导出时加的"选中人数必须等于名额"门禁把它拦下来了。
+- 现在怎么挡：阈值在 `bundle.json` 里存原始 float（不 round），`export._level_cutoffs` 返回未舍入值，`_gate` 第 5 条比"按阈值选中人数 vs 名额"，差超过 1 人就拒绝发布。
+- 教训：**边界值不要为了好看而损失精度**；要好看在展示层做，不要在做决定的那一层做。
+
+## 15. NaN 让"返回 422"这件事自己炸成 500
+
+- 当时怎么想的：数值字段有范围校验就够了，NaN 不会有人传。
+- 为什么错了：JSON 里确实可以出现 `NaN`（Python 的 `json` 能解析）。pydantic 校验失败时 `errors()` 会带 `input: nan`，FastAPI 用 `json.dumps(..., allow_nan=False)` 序列化 422 响应，于是**报错本身报错**，客户端看到 500。
+- 怎么发现的：新写 `test_nan_is_422_not_a_crash`（先把 payload `json.dumps`，再把 `"年龄": <值>` 替换成 `"年龄": NaN`），第一次跑就红在服务端序列化。
+- 现在怎么挡：数值字段 `Field(constraints={"allow_inf_nan": False})` 在入口拦；`_body_errors` 只回 `{"loc", "msg", "type"}`，不回显 `input`（既避免回显用户值，也避免 NaN 让编码器崩）。
+- 教训：**错误路径也要能被序列化**；能进 JSON 的坏值（NaN/Infinity）要在入口就关掉。
