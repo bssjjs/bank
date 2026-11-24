@@ -16,24 +16,14 @@ import numpy as np
 import pandas as pd
 
 from bank_training import calibration as C
+from bank_training import metric_specs as MS
 from bank_training import metrics as M
 from bank_training import slices as SL
 
-#: 指标的中文说明与显示格式；顺序即报告里的顺序。
-METRIC_ROWS: tuple[tuple[str, str, str], ...] = (
-    ("precision_at_quota", "名额内精确率", ".4f"),
-    ("recall_at_quota", "名额内召回率", ".4f"),
-    ("f1_at_quota", "名额内 F1", ".4f"),
-    ("lift_at_quota", "名额内提升（相对基率）", ".4f"),
-    ("accuracy_at_quota", "名额内准确率", ".4f"),
-    ("tp_at_quota", "名额内打中的正例", ".0f"),
-    ("fp_at_quota", "名额内多打的人", ".0f"),
-    ("fn_at_quota", "名额外漏掉的正例", ".0f"),
-    ("roc_auc", "ROC-AUC", ".4f"),
-    ("ap", "AP（平均精确率）", ".4f"),
-    ("brier", "Brier（越小越好）", ".4f"),
-    ("log_loss", "对数损失（越小越好）", ".4f"),
-    ("ece", "ECE（校准误差，越小越好）", ".4f"),
+#: 指标表（名字、中文名、显示格式）由 `metric_specs` 派生：
+#: 中文名与小数位只登记在那里，报告、告警、模型卡才不会各说一套。
+METRIC_ROWS: tuple[tuple[str, str, str], ...] = tuple(
+    (item.name, item.label, f".{item.digits}f") for item in MS.METRIC_SPECS
 )
 
 

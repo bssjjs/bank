@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, brier_score_loss, log_loss, roc_auc_score
 
+from bank_training import metric_specs
+
 SEED = 42
 CI_SAMPLES = 200
 CI_LEVEL = 0.95
@@ -39,6 +41,9 @@ METRIC_NAMES = (
     "log_loss",
     "ece",
 )
+
+#: 导入时就校验「指标清单 == 指标出口登记表」：加指标忘了登记，这里先炸。
+metric_specs.assert_complete(METRIC_NAMES)
 
 
 def _arrays(

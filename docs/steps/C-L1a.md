@@ -11,3 +11,6 @@
 - 不改名次与阈值的换算口径（A：优先 = 名额内全部；旧的三档口径已废，见 ADR 0023）。
 - 不在服务端按批次重算分位点（一次只能看到一个客户，且不可复现）。
 - 不把 `capacity` 复制进 `configs/decision.yaml`（唯一出处是 `base.yaml` 的 `quota.frac`）。
+- 指标出口：`packages/training/src/bank_training/metric_specs.py` 一处登记 13 个指标的名字/中文名/方向/位数，
+  `report.METRIC_ROWS` 由它派生，`metrics.py` 导入时校验清单一致。`pytest tests/unit/test_metric_specs.py`（7 项）
+
