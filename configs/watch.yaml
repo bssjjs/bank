@@ -1,0 +1,12 @@
+schema_version: 1
+thresholds:
+  psi_watch: 0.1
+  psi_alert: 0.25
+  label_shift_pct: 50.0
+  coverage_min: 0.7
+channels:
+  - kind: console
+  - kind: file
+    path: data/processed/alerts.jsonl
+schedule:
+  interval_seconds: 3600

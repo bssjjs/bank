@@ -59,6 +59,7 @@
 | 特征目录 | `features.yaml` 33 字段（含 8 禁用列），与 `schema.py` 对账 | `catalog.py` | ADR 0004 | `pytest tests/unit/test_catalog.py` |
 | 注册表 | 清洗规则按编码登记，台账顺序可 diff | `rules.py` | ADR 0004 | `pytest tests/unit/test_rules.py` |
 | 质量门 | 五道门一条命令，末行「质量门：全绿」 | `scripts/ci.py` | 本文件 §7 | `python scripts/ci.py` |
+| 告警与定时检查 | 读漂移/回流/服务指标，按阈值分级，渠道可换；连续两轮越线才建议重训 | `bank/alerts.py` + `bank_training/watch.py` | ADR 0018 | `python -m bank_training.watch` |
 | 文档与 ADR | 9 份 ADR + 9 张模块卡 + 本文件 | `docs/adr/` `docs/modules/` | — | — |
 
 ## 3. 模块图与分层

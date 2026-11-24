@@ -43,7 +43,7 @@
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 .venv\Scripts\python.exe -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 314 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 347 项、覆盖率门槛 85）
 .venv\Scripts\python.exe -m pytest tests -q
 .venv\Scripts\python.exe scripts\ci.py
 
@@ -176,6 +176,19 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 - **正例率剧烈漂移**：2008 上半年 3.69% → 2010 上半年 53.22%。验证集正例率约 50%，模型概率会系统性偏低、Brier 很难看，这是漂移不是 bug。
 - **名额制**：按每日外呼名额取分数最高的 356 人，阈值 0.5 只作对照；名额人数 = 验证集行数 × 比例，不是全表行数。
 
+## 告警与定时检查（F6）
+
+`python -m bank_training.watch` 一轮检查三件事：读 `drift.json` 按阈值分级、读 `feedback.json` 看标签覆盖率、可选读服务 `/metrics`（`--base-url http://127.0.0.1:8000`）。结果落 `data/processed/watch.json`，同时投递到 `configs/watch.yaml` 配的渠道（`console` / `file` / `webhook`）。有 `alert` 级告警时退出码 1，可以直接挂到流水线上。
+
+重训建议要**连续两次**：同一特征 PSI ≥ 0.25 连跑两轮才报 `retrain/psi_two_runs`（历史在 `data/processed/watch_history.jsonl`）。实测第二轮多出这条：
+
+```
+[alert] retrain/psi_two_runs: 上次营销结果、住房贷款、历史联系次数、年龄、职业、联系月份 连续两次检查都越过告警线
+检查完成：info 0 / warn 5 / alert 8；有 alert 级告警：需要人看
+```
+
+取舍见 `docs/adr/0018-告警渠道与定时检查.md`，组件卡 `docs/cards/F6-告警.md`。
+
 ## 文档
 
 | 文档 | 内容 |
@@ -185,7 +198,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/data_card.md` | 数据卡：来源许可、时间轴证据、漂移表、泄漏证据、限制 |
 | `docs/pitfalls.md` | 9 条真踩过的坑 |
 | `docs/model_card.md` | 模型卡：指标、校准与漂移、解释示例、7 条限制 |
-| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流、热加载与服务指标） |
+| `docs/adr/` | 决策记录（数据集口径、时间切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约与错误码、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2 与标签回流、热加载与服务指标、告警渠道与定时检查） |
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
 | `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |
