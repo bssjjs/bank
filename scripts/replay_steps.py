@@ -92,6 +92,32 @@ def _prep_commands(worktree: Path) -> list[list[str]]:
     return commands
 
 
+def _backfill_docs(worktree: Path) -> None:
+    """步骤卡与"tag 守门测试"取 tip 的版本，不取那个 tag 当年的。
+
+    理由写在 `docs/steps/README.md`：步骤卡是**从 git 历史回写**的，老 tag 的树里当然没有
+    后来才写的卡；`tests/architecture/test_replay.py` 管的是"现在这一组 tag 是否都有卡"，
+    它描述的是 tag 集合的规则，不是那一步的代码。这两样留在 tag 当年会让回放越老越红，
+    而红的原因与代码无关。被测的代码、配置、测试仍然全部来自 tag 自己。
+    """
+    copies = [
+        (ROOT / "docs" / "steps", worktree / "docs" / "steps"),
+        (
+            ROOT / "tests" / "architecture" / "test_replay.py",
+            worktree / "tests" / "architecture" / "test_replay.py",
+        ),
+    ]
+    for source, target in copies:
+        if not source.exists():
+            continue
+        if source.is_dir():
+            shutil.rmtree(target, ignore_errors=True)
+            shutil.copytree(source, target)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+
 def replay(tag: str) -> tuple[bool, str]:
     """在一个干净的 worktree 里回放一个 tag，返回 (是否通过, 说明)。"""
     worktree = WORK / tag
@@ -128,6 +154,7 @@ def replay(tag: str) -> tuple[bool, str]:
         problem = _seed_data(worktree)
         if problem:
             return False, problem
+        _backfill_docs(worktree)
         for command in _prep_commands(worktree):
             prep = subprocess.run(
                 command,
