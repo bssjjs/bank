@@ -30,7 +30,7 @@ Windows PowerShell 可用 `Get-FileHash data/bank-marketing.db -Algorithm SHA256
 
 本项目的工程骨架参考了课程参考项目 `diabetes-risk`，并对照了早期项目 `diabetes-v0` 的问题清单；业务数据、口径、训练评估和服务实现均针对 Bank Marketing 重新完成，**不是把参考项目改名后提交**。
 
-复用的主要是机制与实现思路：uv workspace 三包与依赖方向、`src` 布局、五道质量门及守门测试、严格 YAML/特征目录、规范化 JSON 与内容指纹、基线封条、按 `step-*` tag 回放、ADR/步骤卡/组件卡文档方式。`scripts/ci.py`、指纹工具、冻结与封条流程在参考设计上做了本项目适配；配置、字段、错误类型、测试数据和业务规则均按本仓库重写；具体取舍见 `docs/adr/`。
+复用的主要是机制与实现思路：uv workspace 三包与依赖方向、`src` 布局、五道质量门及守门测试、严格 YAML/特征目录、规范化 JSON 与内容指纹、基线封条、按 `step-*` tag 回放、ADR/步骤卡文档方式。`scripts/ci.py`、指纹工具、冻结与封条流程在参考设计上做了本项目适配；配置、字段、错误类型、测试数据和业务规则均按本仓库重写；具体取舍见 `docs/adr/`。
 
 ## 现在能跑什么
 
@@ -140,7 +140,7 @@ uv run python scripts/replay_steps.py
 
 每条预测追加一行到 `data/processed/predictions.jsonl`（`prediction_record.v2`：`ts/request_id/model_version/score/level/control/features_hash/quota_frac/quota_n`，只留输入指纹、不写客户特征值）。契约与错误码见 `docs/adr/0007-服务契约与错误码.md`。
 
-热加载与指标：服务每个请求只读一次 `models/serving/current.json` 的文本，指针变了就整包重载，**不重启进程**；坏包/坏指针保留旧模型并记 `reload_failures`，指针修好自动恢复。`GET /metrics` 给 `service_metrics.v1`（请求数、`by_route`/`by_status`、预测数、`by_level`、平均/最大延迟、`model`、`reload`）。现场验证：起服务后另开窗口跑 `python -m bank_training.export --version 1.2.0 --promote`，再 `curl /ready`，版本已变、进程没重启。取舍见 `docs/adr/0015-热加载与服务指标.md`，服务卡 `docs/cards/E-L2-服务.md`。
+热加载与指标：服务每个请求只读一次 `models/serving/current.json` 的文本，指针变了就整包重载，**不重启进程**；坏包/坏指针保留旧模型并记 `reload_failures`，指针修好自动恢复。`GET /metrics` 给 `service_metrics.v1`（请求数、`by_route`/`by_status`、预测数、`by_level`、平均/最大延迟、`model`、`reload`）。现场验证：起服务后另开窗口跑 `python -m bank_training.export --version 1.2.0 --promote`，再 `curl /ready`，版本已变、进程没重启。取舍见 `docs/adr/0015-热加载与服务指标.md`。
 
 漂移监控（`python -m bank_training.drift`，基准=训练集 17,537 行，对照=验证集 3,556 行扮演「线上」批次）：
 
@@ -263,7 +263,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 检查完成：info 0 / warn 5 / alert 8；有 alert 级告警：需要人看
 ```
 
-取舍见 `docs/adr/0018-告警渠道与定时检查.md`，组件卡 `docs/cards/F6-告警.md`。
+取舍见 `docs/adr/0018-告警渠道与定时检查.md`。
 
 ## 文档
 
@@ -277,7 +277,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/adr/` | 决策记录 22 份（0001–0023，0009 随 M6 暂缓撤回、编号不复用）：口径、切分、指纹与冻结、三包结构、模型选择、模型包与发布、服务契约、漂移与回流、对账点 1、评估报全、校准与切片、注册表门禁与审计、预测记录 v2、热加载、演练与调参、模型与规则的名额取舍、告警与定时检查、算法注册表、运行时血统、追踪协议、解释一致性、名额策略；索引见 `docs/architecture.md` §7.4 |
 | `docs/demo.md` | 现场演示八步的操作单：命令、该看到什么、看不到时查哪里、六个必问答在哪 |
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
-| `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
+
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |
 
 | `notebooks/数据口径说明.md` | 早期口径分析与结论（§2.5 已更正为按时间切分） |

@@ -21,7 +21,7 @@
 
 | 讲义步 | 讲义要什么（一句话） | 本仓库落点 | tag |
 | --- | --- | --- | --- |
-| A1 / A2 | 地基守门、基线封条、考卷、组件卡、回放 | `scripts/ci.py`、`baselines/`、`tests/exam/`、`docs/cards/` | `step-A1`、`step-A2` |
+| A1 / A2 | 地基守门、基线封条、考卷、回放 | `scripts/ci.py`、`baselines/`、`tests/exam/` | `step-A1`、`step-A2` |
 | B-L1 | 冻结数据交给流水线，训练只吃冻结集 | `python -m bank.freeze` → `data/frozen/`，训练只读它 | 无（M2） |
 | C-L1a | 名额策略、指标出口、决策配置 | `bank/policy.py` + `configs/decision.yaml` + `metric_specs.py` | `step-C-L1a` |
 | C-L1b | 派生特征/预处理只在 Pipeline、一文件一算法、解释能加回分数 | `dataset.derive_features` + `features.build_preprocessor` + `algorithms/` + `explain.contributions` | `step-C-L1b` |

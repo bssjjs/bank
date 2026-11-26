@@ -30,7 +30,7 @@
 | PSI 漂移 + 注入演练正反对照 | `bank_training/drift.py`、`drill.py` | 是（`tests/unit/test_drift.py` 11 项、`test_drill.py` 7 项） | `uv run python -m bank_training.drill` | 具备 |
 | mypy + import-linter + 覆盖率同门 | `scripts/ci.py` | 是（守门测试 15 项） | `uv run python scripts/ci.py` | 具备 |
 | 步骤 tag 回放 | `scripts/replay_steps.py`、21 个 `step-*` tag | 是 | `uv run python scripts/replay_steps.py`（慢） | 具备 |
-| ADR + 组件卡 | `docs/adr/`（22 份）、`docs/cards/`（5 张） | 否（文档无测试） | 打开文档 | 部分（无测试门） |
+| ADR | `docs/adr/`（22 份） | 否（文档无测试） | 打开文档 | 部分（无测试门） |
 | 前端页面（X10） | `apps/web/`（动态表单、结果卡、字段级错误、服务状态） | 否（页面无自动化测试） | `node apps/web/server.mjs` 后打开 5173 | 部分（无测试门） |
 
 ## 三、一致性说明
