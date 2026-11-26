@@ -9,6 +9,77 @@
     <script src="/app.js" defer></script>
   </head>
   <body>
+    <div class="scene" aria-hidden="true">
+      <svg class="scene-gate" viewBox="0 0 420 540" fill="none">
+        <defs>
+          <linearGradient id="gate-stroke" x1="20" y1="80" x2="400" y2="520" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#f7e7bd" stop-opacity="0.92" />
+            <stop offset="0.48" stop-color="#d8a84e" stop-opacity="0.58" />
+            <stop offset="1" stop-color="#b8863b" stop-opacity="0.12" />
+          </linearGradient>
+          <linearGradient id="gate-fill" x1="150" y1="208" x2="270" y2="500" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#c8102e" stop-opacity="0.4" />
+            <stop offset="1" stop-color="#2b0507" stop-opacity="0.04" />
+          </linearGradient>
+        </defs>
+        <g stroke="url(#gate-stroke)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 512h392" opacity="0.32" />
+          <path d="M36 530h348" opacity="0.22" />
+          <path d="M58 500h304" opacity="0.5" />
+          <path d="M74 512V236h272v276" opacity="0.72" />
+          <path d="M40 236h340" stroke-width="2.4" />
+          <path d="M52 214h316" opacity="0.5" />
+          <path d="M76 236V150h268v86" opacity="0.68" />
+          <path d="M28 190 Q210 146 392 190" stroke-width="2.8" />
+          <path d="M58 166 Q210 122 362 166" opacity="0.68" />
+          <path d="M104 148h212" opacity="0.42" />
+          <path d="M96 236v264M136 236v264M284 236v264M324 236v264" opacity="0.46" />
+          <path d="M158 500V312c0-42 22-66 52-66s52 24 52 66v188Z" fill="url(#gate-fill)" stroke="none" />
+          <path d="M158 500V312c0-42 22-66 52-66s52 24 52 66v188" stroke-width="1.8" />
+          <path d="M170 500V316c0-34 17-54 40-54s40 20 40 54v184" opacity="0.4" />
+          <path d="M210 246v254" opacity="0.45" />
+          <path d="M186 300h48M186 340h48M186 380h48M186 420h48M186 460h48" opacity="0.16" />
+          <path d="M120 470h180M106 488h208M92 506h236" opacity="0.36" />
+          <path d="M210 150v-28" opacity="0.5" />
+          <circle cx="210" cy="150" r="4.5" fill="#f7e7bd" stroke="none" opacity="0.85" />
+          <path d="M74 260h-16M346 260h16" opacity="0.4" />
+        </g>
+      </svg>
+
+      <svg class="scene-stars" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" fill="none">
+        <defs>
+          <path id="star-shape" d="M0-50 11.8-15.5 47.6-15.5 19.1 6.2 29.4 40.5 0 20-29.4 40.5-19.1 6.2-47.6-15.5-11.8-15.5Z" />
+          <linearGradient id="star-fade" x1="160" y1="110" x2="840" y2="620" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#fff3cc" stop-opacity="0.95" />
+            <stop offset="0.55" stop-color="#e8c476" stop-opacity="0.55" />
+            <stop offset="1" stop-color="#c99a43" stop-opacity="0.12" />
+          </linearGradient>
+        </defs>
+        <g fill="url(#star-fade)">
+          <use href="#star-shape" transform="translate(370 350) scale(3.2)" />
+          <use href="#star-shape" transform="translate(620 170) rotate(-20) scale(1)" />
+          <use href="#star-shape" transform="translate(780 300) rotate(-8) scale(1)" />
+          <use href="#star-shape" transform="translate(780 470) rotate(10) scale(1)" />
+          <use href="#star-shape" transform="translate(620 600) rotate(25) scale(1)" />
+        </g>
+      </svg>
+
+      <svg class="scene-yuan" viewBox="0 0 220 260" fill="none">
+        <defs>
+          <linearGradient id="yuan-stroke" x1="24" y1="20" x2="198" y2="242" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#fff2c8" stop-opacity="0.96" />
+            <stop offset="0.5" stop-color="#e8c476" stop-opacity="0.8" />
+            <stop offset="1" stop-color="#b8863b" stop-opacity="0.32" />
+          </linearGradient>
+        </defs>
+        <g stroke="url(#yuan-stroke)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M45 24 110 116 175 24" />
+          <path d="M110 116v122" />
+          <path d="M34 136h152M34 176h152" />
+        </g>
+      </svg>
+    </div>
+
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">
@@ -92,5 +163,9 @@
         </div>
       </section>
     </main>
+
+    <footer class="slogan">
+      <span>老实赚钱，很枯燥吧~</span>
+    </footer>
   </body>
 </html>

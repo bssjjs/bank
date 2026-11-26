@@ -252,8 +252,35 @@ async function loadModel() {
   }
 }
 
-function verdictFor(score) {
-  return score >= state.threshold ? "会成交" : "不会成交";
+const VERDICTS = {
+  优先: {
+    text: "优先联系",
+    tone: "priority",
+    icon: '<path d="m5 12 4 4L19 6"/>',
+  },
+  备选: {
+    text: "备选联系",
+    tone: "backup",
+    icon: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  },
+  不建议: {
+    text: "不建议联系",
+    tone: "negative",
+    icon: '<path d="m7 7 10 10M17 7 7 17"/>',
+  },
+};
+
+function verdictFor(level, score) {
+  return (
+    VERDICTS[level] ?? {
+      text: score >= state.threshold ? "优先联系" : "不建议联系",
+      tone: score >= state.threshold ? "priority" : "negative",
+      icon:
+        score >= state.threshold
+          ? '<path d="m5 12 4 4L19 6"/>'
+          : '<path d="m7 7 10 10M17 7 7 17"/>',
+    }
+  );
 }
 
 function escapeHtml(value) {
@@ -282,6 +309,22 @@ function factorMarkup(factor, index, max) {
   `;
 }
 
+function showEmptyResult() {
+  resultState.textContent = "待预测";
+  resultContent.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-visual" aria-hidden="true">
+        <span class="orbit orbit-outer"></span>
+        <span class="orbit orbit-inner"></span>
+        <svg viewBox="0 0 64 64" fill="none">
+          <path d="M14 45V31m9 14V23m9 22V17m9 28V27m9 18V13M11 51h42" />
+        </svg>
+      </div>
+      <span class="empty-label">待预测</span>
+    </div>
+  `;
+}
+
 function showLoadingResult() {
   resultState.textContent = "预测中";
   resultContent.innerHTML = `
@@ -294,17 +337,14 @@ function showLoadingResult() {
 
 function renderResult(result) {
   const score = Math.min(1, Math.max(0, Number(result.score)));
-  const positive = score >= state.threshold;
-  const verdict = verdictFor(score);
-  const factors = (result.factors ?? []).slice(0, 3);
+  const verdict = verdictFor(result.level, score);
+  const negative = verdict.tone === "negative";
+  const factors = (result.factors ?? []).slice(0, 5);
   const max = Math.max(...factors.map((factor) => Math.abs(Number(factor.contribution))), 0.001);
-  const icon = positive
-    ? '<path d="m5 12 4 4L19 6"/>'
-    : '<path d="m7 7 10 10M17 7 7 17"/>';
 
   resultState.textContent = result.level;
   resultContent.innerHTML = `
-    <article class="prediction" aria-label="成交概率 ${(score * 100).toFixed(1)}%，${verdict}">
+    <article class="prediction" aria-label="成交概率 ${(score * 100).toFixed(1)}%，${verdict.text}">
       <div class="score-area">
         <div class="score-ring">
           <svg viewBox="0 0 240 240" role="img" aria-label="成交概率 ${(score * 100).toFixed(1)}%">
@@ -323,9 +363,9 @@ function renderResult(result) {
             <span class="score-percent">%</span>
           </div>
         </div>
-        <div class="verdict${positive ? "" : " is-negative"}">
-          <svg viewBox="0 0 24 24" role="img" aria-label="${verdict}">${icon}</svg>
-          <span>${verdict}</span>
+        <div class="verdict${negative ? " is-negative" : verdict.tone === "backup" ? " is-backup" : ""}">
+          <svg viewBox="0 0 24 24" role="img" aria-label="${verdict.text}">${verdict.icon}</svg>
+          <span>${verdict.text}</span>
           <span class="level-tag">${escapeHtml(result.level)}</span>
         </div>
       </div>
@@ -371,14 +411,34 @@ function animateNumber(element, target) {
   requestAnimationFrame(tick);
 }
 
+function serverMessage(detail, field) {
+  const raw = typeof detail.msg === "string" ? detail.msg.trim() : "";
+  if (!raw) {
+    return isNumeric(field) ? validateField(field, state.values[field.name]) || "输入无效" : "输入无效";
+  }
+  const common = {
+    "Field required": "必填",
+    "Input should be a valid number": "请输入数字",
+    "Input should be a valid integer": "请输入整数",
+  };
+  if (common[raw]) return common[raw];
+  const range = raw.match(/^Input should be (greater than or equal to|less than or equal to) (.+)$/);
+  if (range) {
+    return range[1] === "greater than or equal to" ? `不能小于 ${range[2]}` : `不能大于 ${range[2]}`;
+  }
+  if (raw.startsWith("Input should be")) return "输入格式不正确";
+  return raw.replace(/^Value error,\s*/i, "");
+}
+
 function applyServerErrors(details) {
   fieldsHost.querySelectorAll(".field").forEach((field) => field.classList.remove("is-invalid"));
+  if (!Array.isArray(details)) return;
   for (const detail of details) {
     const name = detail.loc?.[1];
     if (typeof name !== "string") continue;
     const field = state.inputs.find((item) => item.name === name);
     if (!field) continue;
-    state.errors[name] = isNumeric(field) ? validateField(field, state.values[name]) || "输入无效" : "输入无效";
+    state.errors[name] = serverMessage(detail, field);
     paintField(name);
   }
   updateSubmitState();
@@ -386,7 +446,13 @@ function applyServerErrors(details) {
 
 async function predict(event) {
   event.preventDefault();
-  if (!state.ready || state.predicting || !allValid()) return;
+  if (!state.ready || state.predicting) return;
+  if (!allValid()) {
+    formError.textContent = "请检查标红字段";
+    formError.hidden = false;
+    showEmptyResult();
+    return;
+  }
   state.predicting = true;
   formError.hidden = true;
   updateSubmitState();
@@ -401,16 +467,17 @@ async function predict(event) {
     });
     if (response.status === 422) {
       applyServerErrors(body.detail ?? []);
-      resultState.textContent = "待预测";
-      resultContent.innerHTML = '<div class="empty-state"><div class="empty-visual" aria-hidden="true"><span class="orbit orbit-outer"></span><span class="orbit orbit-inner"></span><svg viewBox="0 0 64 64" fill="none"><path d="M14 45V31m9 14V23m9 22V17m9 28V27m9 18V13M11 51h42"/></svg></div><span class="empty-label">待预测</span></div>';
+      formError.textContent = "请检查标红字段";
+      formError.hidden = false;
+      showEmptyResult();
       return;
     }
     if (!response.ok) throw new Error("predict-failed");
     renderResult(body);
   } catch {
-    formError.textContent = "预测失败";
+    formError.textContent = "预测失败，请确认服务已启动";
     formError.hidden = false;
-    resultState.textContent = "待预测";
+    showEmptyResult();
     setStatus("offline", "服务异常");
     state.ready = false;
   } finally {
