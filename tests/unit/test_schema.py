@@ -13,6 +13,8 @@ import pandas as pd
 from bank import dataset as D
 from bank import schema as S
 
+from tests.support import synthetic_raw_frame
+
 
 class TestPdays(unittest.TestCase):
     def test_contacted_flag(self):
@@ -84,7 +86,7 @@ class TestUnknown(unittest.TestCase):
 class TestDataset(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.raw = D.load_raw()
+        cls.raw = synthetic_raw_frame(rows=200)
         cls.df = D.build_dataset(cls.raw)
 
     def test_rows_and_target_preserved(self):
@@ -105,10 +107,10 @@ class TestDataset(unittest.TestCase):
         a, b = set(D.model_features("A")), set(D.model_features("B"))
         self.assertEqual(a - b, set(S.TIME_LEAKY))
 
-    def test_validate_passes_on_real_data(self):
+    def test_validate_passes_on_synthetic_data(self):
         facts = D.validate(self.df, self.raw)
         self.assertEqual(facts["n_rows"], len(self.raw))
-        self.assertAlmostEqual(facts["pos_rate"], 0.117, places=3)
+        self.assertAlmostEqual(facts["pos_rate"], 0.20, delta=0.05)
 
     def test_validate_catches_tampering(self):
         broken = self.df.copy()

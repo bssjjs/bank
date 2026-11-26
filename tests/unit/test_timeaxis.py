@@ -9,6 +9,8 @@ import pandas as pd
 from bank import schema as S
 from bank import timeaxis as T
 
+from tests.support import synthetic_raw_frame
+
 
 class BuildTimeAxisTest(unittest.TestCase):
     def test_basic_month_progression(self) -> None:
@@ -64,39 +66,42 @@ class BuildTimeAxisTest(unittest.TestCase):
         self.assertEqual(list(T.month_key(pd.Series(dates))), ["2008-12", "2009-01"])
 
 
-class RealDataTimeAxisTest(unittest.TestCase):
-    """拿真实库跑一遍：数据卡的结论必须能被断言复现，而不只是写在文档里。"""
+class SyntheticTimeAxisTest(unittest.TestCase):
+    """用合成日期跑一遍时间轴：不读原始库，干净检出也能跑。"""
 
     @classmethod
     def setUpClass(cls) -> None:
-        from bank import profile
-
-        cls.df = profile.with_time_axis(profile.load_ordered())
+        raw = synthetic_raw_frame(rows=300, per_day=1)
+        raw.insert(0, T.SEQUENCE, range(1, len(raw) + 1))
+        cls.raw = raw
+        cls.df = T.with_time_axis(raw)
 
     def test_shape_and_label(self) -> None:
-        self.assertEqual(len(self.df), 45_211)
-        self.assertEqual(int((self.df[S.TARGET_RAW] == S.POSITIVE).sum()), 5_289)
+        self.assertEqual(len(self.df), len(self.raw))
+        self.assertEqual(
+            int((self.df[S.TARGET_RAW] == S.POSITIVE).sum()),
+            int((self.raw[S.TARGET_RAW] == S.POSITIVE).sum()),
+        )
 
     def test_date_range_and_monotonic(self) -> None:
         dates = self.df[T.DATE]
         self.assertEqual(str(dates.min().date()), "2008-05-05")
-        self.assertEqual(str(dates.max().date()), "2010-11-17")
-        self.assertEqual(int(dates.nunique()), 561)
+        self.assertEqual(str(dates.max().date()), "2009-02-28")
+        self.assertEqual(int(dates.nunique()), len(self.df))
         self.assertTrue(bool(dates.is_monotonic_increasing))
 
-    def test_month_blocks_and_missing_month(self) -> None:
+    def test_month_blocks(self) -> None:
         dates = self.df[T.DATE]
         months = sorted(T.month_key(dates).unique())
-        self.assertEqual(len(months), 30)
-        self.assertNotIn("2008-09", months)
         self.assertEqual(months[0], "2008-05")
-        self.assertEqual(months[-1], "2010-11")
+        self.assertEqual(months[-1], "2009-02")
+        self.assertEqual(len(months), 10)
 
     def test_rowid_sequence_preserved(self) -> None:
         # 行号必须从 1 连续到底：它是时间序的载体，断了时间轴就不可信。
         seq = self.df[T.SEQUENCE]
         self.assertEqual(int(seq.iloc[0]), 1)
-        self.assertEqual(int(seq.iloc[-1]), 45_211)
+        self.assertEqual(int(seq.iloc[-1]), len(self.df))
         self.assertTrue(bool(seq.is_monotonic_increasing))
 
 

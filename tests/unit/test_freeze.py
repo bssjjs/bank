@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from datetime import date
 
@@ -17,6 +18,8 @@ from bank import clean, freeze, repro, split
 from bank import config as C
 from bank import schema as S
 from bank import timeaxis as T
+
+from tests.support import scratch_dir, synthetic_config, write_synthetic_db
 
 POS = S.POSITIVE
 NEG = S.NEGATIVE
@@ -182,16 +185,17 @@ class FingerprintTest(unittest.TestCase):
         self.assertEqual(left, right)
 
 
-class FrozenArtifactTest(unittest.TestCase):
-    """跑一次完整冻结，把 ADR 0002 定下的数字钉在测试里。"""
+class FrozenManifestTest(unittest.TestCase):
+    """冻结账单是进 Git 的；没有原始库也要能核对 ADR 0002 钉死的数字。"""
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cfg = C.load_config()
-        cls.built = freeze.build(cls.cfg)
+        frozen_dir = S.ROOT / "data" / "frozen"
+        cls.manifest = json.loads((frozen_dir / "manifest.json").read_text(encoding="utf-8"))
+        cls.frozen = json.loads((frozen_dir / "FROZEN.json").read_text(encoding="utf-8"))
 
     def test_manifest_contract_fields(self) -> None:
-        m = self.built.manifest
+        m = self.manifest
         self.assertEqual(m["contract"], "manifest.v1")
         self.assertEqual(m["builder"], "bank.freeze/1")
         self.assertEqual(m["source"]["table"], S.RAW_TABLE)
@@ -203,7 +207,7 @@ class FrozenArtifactTest(unittest.TestCase):
         self.assertIn(S.TARGET, m["columns"])
 
     def test_counts_match_adr_0002(self) -> None:
-        m = self.built.manifest
+        m = self.manifest
         self.assertEqual((m["window"]["rows"], m["window"]["positives"]), (21093, 4109))
         self.assertEqual(
             (m["tables"]["train"]["rows"], m["tables"]["train"]["positives"]), (17537, 2327)
@@ -215,11 +219,11 @@ class FrozenArtifactTest(unittest.TestCase):
         self.assertEqual(m["window"]["buffer_days"], 0)
 
     def test_quota_is_ten_percent_of_valid(self) -> None:
-        self.assertEqual(self.built.manifest["capacity"]["quota_n"], 356)
+        self.assertEqual(self.manifest["capacity"]["quota_n"], 356)
 
     def test_frozen_matches_manifest(self) -> None:
-        f = self.built.frozen
-        m = self.built.manifest
+        f = self.frozen
+        m = self.manifest
         self.assertEqual(f["contract"], "frozen.v1")
         for name in ("train", "valid"):
             self.assertEqual(
@@ -228,6 +232,32 @@ class FrozenArtifactTest(unittest.TestCase):
             self.assertEqual(f["tables"][name]["rows"], m["tables"][name]["rows"])
         self.assertEqual(f["source"]["sha256"], m["source"]["sha256"])
         self.assertEqual(f["config"]["sha256"], m["config"]["sha256"])
+
+
+class SyntheticFreezeTest(unittest.TestCase):
+    """用合成库跑完整冻结链路；不依赖原始库，也不改写 data/frozen。"""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.root = scratch_dir("freeze")
+        cls.db = write_synthetic_db(cls.root / "synthetic.db", rows=20_000, per_day=22)
+        cls.frozen_dir = cls.root / "frozen"
+        cls.cfg = synthetic_config(cls.db, cls.frozen_dir)
+        cls.built = freeze.build(cls.cfg)
+
+    def test_rows_and_positives_meet_task_minimum(self) -> None:
+        built = self.built
+        n_total = len(built.train) + len(built.valid)
+        n_pos = int(built.train[S.TARGET].sum()) + int(built.valid[S.TARGET].sum())
+        self.assertGreaterEqual(n_total, freeze.MIN_ROWS)
+        self.assertLessEqual(n_total, freeze.MAX_ROWS)
+        self.assertGreaterEqual(n_pos, freeze.MIN_POSITIVES)
+
+    def test_quota_is_ten_percent_of_valid(self) -> None:
+        self.assertEqual(
+            self.built.manifest["capacity"]["quota_n"],
+            split.quota_n(len(self.built.valid), self.cfg),
+        )
 
     def test_rebuild_is_reproducible(self) -> None:
         again = freeze.build(self.cfg)
@@ -240,7 +270,8 @@ class FrozenArtifactTest(unittest.TestCase):
         self.assertLess(train_dates.max(), valid_dates.min())
         self.assertLess(train_dates.max(), pd.Timestamp(self.cfg.split.cut))
 
-    def test_check_passes_on_frozen_files(self) -> None:
+    def test_write_and_check_round_trip(self) -> None:
+        freeze.write(self.built)
         self.assertEqual(freeze.check(self.cfg), 0)
 
     def test_window_too_small_is_rejected(self) -> None:

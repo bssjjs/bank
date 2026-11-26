@@ -4,7 +4,7 @@
 
 ## 在另一台电脑上跑通
 
-前置条件只有两项：安装 [uv](https://docs.astral.sh/uv/)，以及把同版原始库放在 `data/bank-marketing.db`（获取方式见下节）。Python 3.12 和项目依赖由 uv 按 `.python-version`、`uv.lock` 准备，不需要预先安装 Python，也不需要先建 `.venv`。
+跑质量门只需要安装 [uv](https://docs.astral.sh/uv/)；要重建数据集、冻结集或模型包时，再把同版原始库放在 `data/bank-marketing.db`（获取方式见下节）。Python 3.12 和项目依赖由 uv 按 `.python-version`、`uv.lock` 准备，不需要预先安装 Python，也不需要先建 `.venv`。
 
 解压或克隆后进入仓库根目录，直接跑唯一质量门：
 
@@ -14,7 +14,7 @@ uv run python scripts/ci.py
 
 `uv run` 会在首次运行时自动创建 `.venv` 并同步锁定依赖。想显式安装依赖也可以先执行 `uv sync --all-groups`，但不是质量门的前置条件。以下命令统一使用 `uv run python`，Windows、macOS、Linux 均不写死本机解释器路径。
 
-**分发 Git 包时**：只发被 Git 跟踪的内容（`pyproject.toml`、`uv.lock`、`.python-version`、`configs/`、`packages/`、`scripts/`、`tests/`、`baselines/`、`docs/`、`data/frozen/`、`data/feature_spec.json`），**不要把原始库 `data/bank-marketing.db` 打进 Git**。接收方按上节取得同版库、放到 `data/bank-marketing.db` 后再跑质量门；没有这个库时，`bank.build` / `bank.freeze` / `bank.reconcile` 以及依赖真实库与冻结集的测试会失败，这是缺数据，不是代码坏了。`.venv/`、`.tmp/`、`models/`、`data/processed/`、工具缓存与 `__pycache__/` 都不分发。
+**分发 Git 包时**：只发被 Git 跟踪的内容（`pyproject.toml`、`uv.lock`、`.python-version`、`configs/`、`packages/`、`scripts/`、`tests/`、`baselines/`、`docs/`、`data/frozen/`、`data/feature_spec.json`），**不要把原始库 `data/bank-marketing.db` 打进 Git**。接收方只跑质量门时不需要原始库：数据链测试用现造的小库，`uv run python scripts/ci.py` 在干净 clone 上就能跑。要复现文档里的真实数字（`bank.build` / `bank.freeze` / `bank.reconcile` / 训练）时，才需要按上节取得同版库放到 `data/bank-marketing.db`；缺库只会让这些数据链命令失败，不影响质量门。`.venv/`、`.tmp/`、`models/`、`data/processed/`、工具缓存与 `__pycache__/` 都不分发。
 
 ## 原始数据、来源与指纹
 
@@ -76,7 +76,7 @@ uv run python -m bank_api          # 起服务；换模型只改 current.json，
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
 uv run python -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 432 项、覆盖率门槛 85）
+# 10) 测试与质量门（交付前最后一关；pytest 435 项、覆盖率门槛 85）
 uv run python -m pytest tests -q
 uv run python scripts/ci.py
 

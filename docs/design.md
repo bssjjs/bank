@@ -1,6 +1,6 @@
-# 设计文档（M1：五个问题）
+# 设计文档
 
-> 本文件按课程任务书 M1 的五个问题组织，一页能读完。口径细节在 `docs/problem.md` 与
+> 口径细节在 `docs/problem.md` 与
 > `docs/spec.md`，数据证据在 `docs/data_card.md`，指标数字在 `docs/model_card.md`。
 
 ## 1. 为什么做

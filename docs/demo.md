@@ -8,7 +8,7 @@
 
 ```powershell
 git status --short          # 应该为空（.tmp/ 与 data/processed/ 不跟踪）
-uv run python -m pytest tests -q   # 432 passed 以内，几十秒
+uv run python -m pytest tests -q   # 435 passed，几十秒
 ```
 
 - 若 `models/serving/` 为空：演示第 2 步会重建，不用慌；服务第 3 步之前必须先跑第 2 步。
@@ -130,7 +130,7 @@ uv run python -m bank_training.watch --no-send
 uv run python scripts\ci.py
 ```
 
-该看到：五道门依次 `[通过]`（ruff check、ruff format --check、mypy、lint-imports、pytest），末行 **`质量门：全绿`**，退出码 0；`pytest` 门里 **432 passed**、覆盖率 **86%**（门槛 85）。
+该看到：五道门依次 `[通过]`（ruff check、ruff format --check、mypy、lint-imports、pytest），末行 **`质量门：全绿`**，退出码 0；`pytest` 门里 **435 passed**、覆盖率 **86%**（门槛 85）。
 
 ```powershell
 uv run python scripts\freeze_baseline.py --check   # 基线封条：9 个文件

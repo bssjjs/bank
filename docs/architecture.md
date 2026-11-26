@@ -9,7 +9,7 @@
 
 银行电话营销团队每天有固定外呼名额（本项目按验证集 10% 取 356 人）。**在打电话之前**，用那时能拿到的客户信息判断他会不会认购定期存款，按名额排出今天该打给谁。一句话定义与成功标准见 `docs/problem.md`。
 
-### 1.2 课程要求（任务书九模块）
+### 1.2 课程要求
 
 | 模块 | 要求 |
 | --- | --- |
@@ -53,7 +53,7 @@
 | 两条基线 | 规则加权打分 + 逻辑回归，同一验证集同一名额 | `baselines.py` + `train.py` | `docs/model_card.md` | `python -m bank_training.train` |
 | 名额制决策 | `quota_n = ceil(n_valid × frac)`，验证集算名额 | `metrics.py` + `config.py` | ADR 0002 / 0005 | `python -m bank_training.train` |
 | 运行记录 | 每次训练一个 mlflow run（params/tags/metrics/artifacts） | `train.py` `_log_run` | `docs/model_card.md` | `python -m bank_training.train` |
-| 单条解释 | 线性贡献 = 系数 × 标准化后取值，取 |贡献| 前 5 | `packages/core/src/bank/explain.py` | ADR 0005 | `pytest tests/unit/test_training.py` |
+| 单条解释 | 线性贡献 = 系数 × 标准化后取值，取 |贡献| 前 5；另返回截距与基准概率 | `packages/core/src/bank/explain.py` | ADR 0005 / 0022 | `pytest tests/unit/test_explain.py` |
 | 模型包六项 | `bundle.json` + `model.joblib` + `current.json` | `bundle.py` | ADR 0006 | `python -m bank_training.export --version 1.1.0` |
 | 缺列拒绝 | `Bundle.prepare` 先查 `required_columns` | `bundle.py` `MissingColumnsError` | ADR 0006 | `tests/unit/test_bundle.py` |
 | 不覆盖旧版本 | 目标目录已存在直接报错 + staging 原子改名 | `bundle.write_bundle` | ADR 0006 | 同上 |
@@ -221,7 +221,7 @@ bank/
 ├── configs/                  base/features/model/api/watch/tracking/decision 七份，全部强校验
 ├── baselines/                第一轮结果的文件封条（v1/ 快照 + SHA256SUMS）
 ├── scripts/                  ci.py 质量门、freeze_baseline.py 封条、replay_steps.py 按 tag 回放
-├── tests/{unit,contract,architecture,service,exam}
+├── tests/{unit,contract,architecture,service,exam,e2e}
 ├── notebooks/                分析存档与口径说明
 └── docs/
     ├── problem.md spec.md data_card.md pitfalls.md model_card.md architecture.md
@@ -240,8 +240,8 @@ bank/
 3. `Bundle.prepare`：`dataset.derive_features` 补齐派生列（哨兵处理、分档、信息完整度、月份/日期周期编码），`select_features` 按 `bundle.features` 的顺序取 21 列；缺列 → `MissingColumnsError`。
 4. `Pipeline.predict_proba`：预处理器（中位数/众数填补、标准化、有序编码、独热）与系数都是训练时拟合的那一份。
 5. `Bundle.level(score)`：≥ 0.57298 → 优先（名额内）；≥ 0.253228 → 备选（名额外的次优带）；否则不建议。切点是验证集分位数，不是概率阈值（ADR 0023）。
-6. `explain.explain_one`：取 |系数 × 标准化后取值| 前 5 个因素，附中文特征名与取值。
-7. 追加一行 `predictions.jsonl`，返回 `{request_id, model_version, score, level, factors, advice}`。
+6. `Bundle.explain_with_base`：取 |系数 × 标准化后取值| 前 5 个因素，同时返回截距（log-odds）与基准概率；`explain_one` 仍只回 top 5 因素，旧调用不变。
+7. 追加一行 `predictions.jsonl`，返回 `{request_id, model_version, score, level, factors, base_value, base_probability, contribution_unit, advice}`。
 8. 平均分（0.272）系统性低于验证集基率（0.501）是漂移所致，见 ADR 0008；`/v1/predict` 不返回校准后的概率。
 
 ### 6.2 一次发布
@@ -254,34 +254,9 @@ bank/
 6. 回退：把 `current.json` 改回旧版本号并重启服务；旧版本目录一直在，不删、不改。
 7. 门禁失败或自检失败：版本目录不会被留下（staging 清理），`current.json` 不动，服务继续用旧版本。
 
-## 7. 做了什么 / 没做什么
+## 7. 加分项与取舍
 
-### 7.1 已实现
-
-- M1 口径：`docs/problem.md`、`spec.md`、`data_card.md`、`pitfalls.md`（9 条）、ADR 0001/0002；`timeaxis.py` 与 `profile.py` 让每个数字可复现。
-- M2 管道：`raw`（只读）、`clean` + `rules`（7 条规则、命中 5 行、无删行）、`split`（时间切分、缓冲 0 落月份边界）、`repro`（源/配置/内容三级指纹）、`freeze` + `--check`、`manifest.v1`。
-- M3 训练评估：规则基线 + LR-A + LR-B（主）+ RF-A、名额制指标、单条解释、`model_card.md`、ADR 0005；13 个自洽指标、两种名额口径、200 次重抽的 95% 区间、评估报告作为产物落进运行（ADR 0011）；校准表与五张切片表（ADR 0012）；名额策略与阈值标定（ADR 0023）。
-- M4 模型包：`model_bundle.v1`、校验和、staging 原子写、不覆盖、`current.json`、发布门禁、运行时血统（ADR 0006 / 0020）、四状态注册表与审计（ADR 0013）、主模型必须可解释（ADR 0022）。
-- M5 服务：6 条路由（含 `/metrics`）、字段级 422、批量上限、v2 预测记录、`/docs`、按指针热加载（ADR 0007 / 0015）。
-- M7 漂移：PSI（等频 10 箱、边界取基准、缺失单独一箱、未见类别合并）、`drift.json` 契约、`m7-drift` run、回流与三条重训条件、告警渠道与定时检查、注入演练与调参（ADR 0008 / 0016 / 0018）。
-- M8 底座：三包 + import 契约 + AST 测试、七份 YAML 强校验、33 字段特征目录、清洗规则注册表、五道门（覆盖率门槛 85）、432 项测试、`AGENTS.md`、基线封条与 tag 回放（ADR 0004）。
-- M9 文档：本文档、22 份 ADR（0001–0023，缺 0009）、10 张模块卡、23 张步骤卡、5 张组件卡、贡献表。
-- 讲义对照步：A1 地基与守门、A2 基线与考卷与回放、C-L1a 名额策略与指标出口、C-L1b 特征工程/模型工厂/解释一致性、C-L1c 追踪协议与两个后端、C-L2a 评估报全、C-L2b 算法注册表与一致性参照、C-L2c 模型与规则的名额取舍、C-L3a 校准与切片、D-L1 模型包血统、D-L2/D-L3 注册表与审计、E-L2 热加载与指标、F-L2 预测记录 v2 与回流、F6 告警与定时检查、F7 故障演练、C-L3b 调参。B-L2 的 sources/cleaning/builder/reconcile 四段在 M2 里一次落地，映射写在 `docs/steps/README.md`。
-
-### 7.2 没做（以及为什么）
-
-| 没做 | 原因 | 若要做 |
-| --- | --- | --- |
-| M6 前端静态页 | 优先级排在最后，接口已就绪（`/v1/model` 返回 15 字段，可直接生成表单） | `apps/web` 一个 HTML + `fetch` 调 `/v1/model` 与 `/v1/predict`，零新依赖 |
-| 自动化重训/调度 | 任务书要求「设计」而非实现；三条触发条件已写进 ADR 0008 | cron + `freeze→train→export` 脚本 + 门禁失败告警 |
-| 在线 A/B 与影子流量 | 需要按请求分流与两套模型包，当前 `current.json` 单指针 | `traffic.json` 权重 + 两版本同时加载 |
-| 数据库存预测记录 | jsonl 足够支撑回流 join，且不需要额外服务 | 换 SQLite 表 + 索引 `request_id` |
-| 监控面板 | 任务书只要求「能跑出 PSI」 | Grafana/静态页读 `drift.json` |
-| 客户级分组切分 | 数据里没有客户 ID，同一客户可能多次出现 | 上游补 ID 后改 `split.py` 的组切分 |
-| 概率校准（Platt/isotonic） | 校准必须用验证集之外的集合，否则等于用验证集调参 | 留出第三个时间段做校准集 |
-| FastAPI 自动 422 文案定制 | 手写校验已统一 `loc/msg`，再定制收益低 | 自定义 `RequestValidationError` 处理器 |
-
-### 7.3 加分项（任务书要求 ≥3）
+### 7.1 加分项（任务书要求 ≥3）
 
 1. **mlflow 实验追踪**：每个训练/导出/漂移阶段都落 run，含参数、数据指纹、指标与产物，可现场查询并对照文档数字。
 2. **可解释性**：单条预测返回 top 5 因素（线性贡献，零额外依赖），前端/接口可直接展示。
@@ -290,7 +265,7 @@ bank/
 5. **质量门与架构测试**：五道门一条命令，依赖方向有人守，改坏立刻红。
 6. **清洗规则注册表**：加规则只写一个函数，台账顺序天然可 diff。
 
-### 7.4 关键取舍索引
+### 7.2 关键取舍索引
 
 | 编号 | 决定 |
 | --- | --- |
