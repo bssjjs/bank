@@ -4,6 +4,8 @@
 
 ## 一、分工
 
+本项目由五个人共同完成，分工如下。
+
 | 角色 | 模块 | 主要交付 | 姓名 |
 | --- | --- | --- | --- |
 | 架构与质量 | M8、M9 | 三包与依赖方向（`.importlinter` + AST 测试）、七份 YAML 强校验、特征目录与 `schema` 对账、清洗规则注册表、`scripts/ci.py` 五道门（覆盖率门槛 85）、基线封条、tag 回放、`architecture.md`、模块卡、ADR 0004 / 0013 / 0019 / 0021 | 李培强 |
@@ -28,13 +30,13 @@
 | 数据 | `M1: 给 profile 加一张按月正例率表并更新数据卡`、`M2: 加一条清洗规则（带命中行数与测试）` |
 | 模型与评估 | `M3: 加一个新指标到 metric_specs 与报告`、`M3: 补一组切片维度` |
 | 发布与服务 | `M5: 给某个字段补一条 422 用例与文档`、`M7: 调 watch 的关注线并记录理由` |
-| 前端 | `X10: 给页面补一条字段级错误用例并接进演示单`（页面已实现，待提交） |
+| 前端 | `X10: 给页面补一条字段级错误用例并接进演示单`（页面已实现并提交） |
 
 提交前自查：`git status --short` 干净状态开始；改完跑 `scripts\ci.py` 全绿；提交信息写清「做了什么、为什么」，中文。
 
 ## 四、当前仓库事实
 
-- 分支 `main`；里程碑 tag：`m1-topic`（口径）、`m2-design`（冻结）、`m3-mvp`（服务）、`frontend-draft`（页面草稿）、`final`（当前交付点，待重打到最新提交）；另有 21 个 `step-*` tag（每个都能被 `scripts\replay_steps.py` 独立回放）。
+- 分支 `main`；里程碑 tag：`m1-topic`（口径）、`m2-design`（冻结）、`m3-mvp`（服务）、`frontend-draft`（页面草稿）、`final`（当前交付点，已指向最新提交）；另有 21 个 `step-*` tag（每个都能被 `scripts\replay_steps.py` 独立回放）。
 - 质量门：`.venv\Scripts\python.exe scripts\ci.py` 末行「质量门：全绿」；`scripts\freeze_baseline.py --check` 校验第一轮数字没被改过。
 - 数据与模型包不进 Git：`data/frozen/` 进 Git；`data/processed/`、`models/`、`mlflow.db` 不进；换机器后按 `README.md` 重跑即可复现全部数字（`bank.freeze` → `bank_training.train` → `export`）。
 - 演示单：`docs/demo.md`（八步命令、期望输出、失败排查、六个必问的答案出处）。
