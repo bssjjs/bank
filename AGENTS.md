@@ -1,14 +1,14 @@
 # AGENTS.md：给编程智能体的规矩
 
-> 只写每次开工都要知道、而且**已经存在**的东西。每完成一步，在第六节追加这一步留下的规矩；不提前写后面步骤的规则。
+> 只写每次开工都要知道、而且**已经存在**的东西。第六节只写每步留下的**规矩**（可执行、可检查），第七节记**进度与事实**；每完成一步，在第六节补规矩、在第七节记进度，不提前写后面步骤的规则。
 
 ## 一、这是什么项目
 
 - 课程分组项目，任务书九个模块（M1 口径 → M9 文档），最终交「能现场演示的系统 + 设计文档 + 答辩」。**模型分数不占分**：架构、取舍、能跑通、数字有出处才是分。
 - 业务问题：银行电话营销。**在打电话之前**，用当时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。
 - 数据：UCI Bank Marketing（`data/bank-marketing.db`，单表 `银行营销数据`，只读，17 列）。45,211 行，正例 5,289（11.70%）。
-- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/tracking/` 是追踪层：`base.py` 定义 `Tracker` 协议与注册表，`memory.py` / `mlflow_backend.py` 是两后端（**只有 `mlflow_backend.py` 能 import mlflow**，架构测试用 AST 扫着），`configs/tracking.yaml` 选后端。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`configs/decision.yaml` 是名额策略的配置（策略名 + 次优带宽度，`bank/policy.py` 强校验），`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。服务层还有 `store.py`（按 `current.json` 热加载模型包）与 `service_metrics.py`（`service_metrics.v1` 计数）。`tests/` 有 425 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
-- 前端**还不存在**，别假设它存在，也别在文档里引用。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
+- 代码现状：**三包（`packages/core|training|api`）+ 口径层 + 冻结层 + 特征目录 + 质量门**。`packages/core/src/bank/` 是唯一代码位置（`core` 谁都不依赖）：`schema.py` 放规则与常量，`dataset.py` 构建数据集并自检，`timeaxis.py` 重建时间轴，`profile.py` 出画像数字（M1 文档的唯一出处），`raw.py` 是唯一只读入口，`clean.py` 是清洗台账，`split.py` 按时间切分，`repro.py` 算指纹，`config.py` 强校验 `configs/base.yaml`，`freeze.py` 产出冻结集与 manifest，`yamlkit.py` 是两份 YAML 共用的严格读取器，`catalog.py` 读 `configs/features.yaml` 并与 `schema.py` 对账。`build.py` / `profile.py` / `freeze.py` 是三个可执行入口。`packages/core/src/bank/` 里另有 M4/M5 共用的推理路径：`features.py` 组预处理器、`explain.py` 单条解释、`bundle.py` 读写模型包（`bundle.json` + `model.joblib` + `current.json`）。`packages/training/src/bank_training/tracking/` 是追踪层：`base.py` 定义 `Tracker` 协议与注册表，`memory.py` / `mlflow_backend.py` 是两后端（**只有 `mlflow_backend.py` 能 import mlflow**，架构测试用 AST 扫着），`configs/tracking.yaml` 选后端。`packages/training/src/bank_training/` 是 M3 的训练层：`data.py` 读冻结集、`pipeline.py` 组预处理器与模型、`metrics.py` 算指标、`baselines.py` 规则基线、`explain.py` 单条解释、`model_config.py` 读 `configs/model.yaml`，`train.py` / `experiments.py` / `export.py` 是三个入口（导出模型包走 `export.py`）。`packages/api/src/bank_api/` 是 M5 的服务层：`config.py` 读 `configs/api.yaml`、`schemas.py` 按模型包生成请求模型与响应模型、`app.py` 建 FastAPI 应用（`create_app`）与 `main()`，`__main__.py` 让 `python -m bank_api` 一条命令起服务。`scripts/ci.py` 是五道门的质量门（门清单由公开函数 `gates()` 给出，`tests/architecture/test_quality_gate.py` 守着门槛不被调低）。`configs/decision.yaml` 是名额策略的配置（策略名 + 次优带宽度，`bank/policy.py` 强校验），`scripts/freeze_baseline.py` 给第一轮结果加文件封条（`baselines/`），`scripts/replay_steps.py` 按 `step-*` tag 回放质量门。服务层还有 `store.py`（按 `current.json` 热加载模型包）与 `service_metrics.py`（`service_metrics.v1` 计数）。`tests/` 有 432 项测试（unit + contract + service + architecture + exam 考卷）。分析结论在 `notebooks/`。
+- 前端页面已有 `apps/web`（零依赖静态页，已提交），但任务书 **M6 基础模块指模型解释**，不是前端；解释已由 `global_explain.py` + `explain.py` 覆盖，页面按扩展 X10 计。已经存在的是：口径层、冻结层、特征目录（`configs/features.yaml` + `catalog.py`）、质量门（`scripts/ci.py`）、清洗规则注册表（`rules.py`）、训练层（`packages/training`）、模型包（`packages/core/src/bank/bundle.py`）、服务层（`packages/api`）。
 
 ### 五个人的角色
 
@@ -16,35 +16,45 @@
 | --- | --- | --- |
 | 架构与质量 | M8、M9 | 三包与依赖方向、配置强校验、特征目录、注册表、质量门 `scripts/ci.py`；`architecture.md`、ADR、模块卡 |
 | 数据 | M1、M2 | 一句话定义、口径规格表、禁用列、数据卡、踩坑清单；原始入口、清洗台账、标签、时间切分、冻结与指纹、manifest |
-| 模型与评估 | M3 | 两条基线、Pipeline、名额规则、指标口径、运行记录、单条解释、模型卡 |
+| 模型与评估 | M3、M6 | 两条基线、Pipeline、名额规则、指标口径、运行记录、单条解释、全局解释、模型卡 |
 | 发布与服务 | M4、M5、M7 | ModelBundle、FastAPI 契约与 422、预测记录、PSI 漂移 |
-| 前端 | M6 | 按 `/v1/model` 动态生成表单、结果卡、字段级错误、服务状态 |
+| 前端 | X10 扩展 | 按 `/v1/model` 动态生成表单、结果卡、字段级错误、服务状态 |
 
 ## 二、怎么算完成
 
-现在能跑的命令（二十条，不要自创第二十一条）：
+唯一标准：`scripts/ci.py` 全绿（ruff check、ruff format --check、mypy、lint-imports、pytest + 覆盖率）。别的命令产出数据、模型和文档，但都不是「做完了」的判据。
+
+每轮改完先自检，再跑质量门（`ci.py` 里格式与风格是 `--check`，不先格式化必红）：
 
 ```powershell
-.venv\Scripts\python.exe -m bank.build
-.venv\Scripts\python.exe -m bank.profile
-.venv\Scripts\python.exe -m bank.freeze        # 加 --check 只校验不重建
-.venv\Scripts\python.exe -m bank.reconcile     # 从原始库重算，与冻结账单逐项对账
-.venv\Scripts\python.exe -m bank_training.train
-.venv\Scripts\python.exe -m bank_training.experiments
-.venv\Scripts\python.exe -m bank_training.export --version 1.0.0
-.venv\Scripts\python.exe -m bank.registry show    # stage/promote/rollback/retire
-.venv\Scripts\python.exe -m bank_api          # 起服务，127.0.0.1:8000
-.venv\Scripts\python.exe -m bank_training.drift  # 对「线上」批次跑 PSI，默认对比验证集
-.venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
-.venv\Scripts\python.exe -m bank_training.drill   # 注入已知漂移，看监控响不响
-.venv\Scripts\python.exe -m bank_training.tune    # 只在训练期里切内层时间窗调参
-.venv\Scripts\python.exe -m bank_training.compare  # 模型 vs 规则，名额 10/15/20% 各抓到多少人
-.venv\Scripts\python.exe -m bank_training.watch   # 一次检查：漂移 / 回流 / 服务，有 alert 退出码 1
-.venv\Scripts\python.exe -m bank_training.parity  # 算法一致性：--write 重算，--check 与 baselines/v1 比
-.venv\Scripts\python.exe -m pytest tests -q
-.venv\Scripts\python.exe scripts\ci.py
-.venv\Scripts\python.exe scripts\freeze_baseline.py --check   # 基线封条，改了数字必须复跑
-.venv\Scripts\python.exe scripts\replay_steps.py              # 慢：每个 step-* tag 各建一次环境再跑门（现在 21 个）
+uv run python -m ruff format .
+uv run python -m ruff check --fix .
+```
+
+现在能跑的入口（二十一条，不要自创第二十二条）：
+
+```powershell
+uv run python -m bank.build
+uv run python -m bank.profile
+uv run python -m bank.freeze        # 加 --check 只校验不重建
+uv run python -m bank.reconcile     # 从原始库重算，与冻结账单逐项对账
+uv run python -m bank_training.train
+uv run python -m bank_training.global_explain  # 全局解释：线性贡献 + 置换重要度 + 蜂群图
+uv run python -m bank_training.experiments
+uv run python -m bank_training.export --version 1.1.0
+uv run python -m bank.registry show    # stage/promote/rollback/retire
+uv run python -m bank_api          # 起服务，127.0.0.1:8000
+uv run python -m bank_training.drift  # 对「线上」批次跑 PSI，默认对比验证集
+uv run python -m bank_training.backfill --labels data\processed\labels.csv
+uv run python -m bank_training.drill   # 注入已知漂移，看监控响不响
+uv run python -m bank_training.tune    # 只在训练期里切内层时间窗调参
+uv run python -m bank_training.compare  # 模型 vs 规则，名额 10/15/20% 各抓到多少人
+uv run python -m bank_training.watch   # 一次检查：漂移 / 回流 / 服务，有 alert 退出码 1
+uv run python -m bank_training.parity  # 算法一致性：--write 重算，--check 与 baselines/v1 比
+uv run python -m pytest tests -q
+uv run python scripts\ci.py
+uv run python scripts\freeze_baseline.py --check   # 基线封条，改了数字必须复跑
+uv run python scripts\replay_steps.py              # 慢：每个 step-* tag 各建一次环境再跑门（现在 21 个）
 ```
 
 - `bank.build` 必须打印「口径层构建完成」，行数 45,211、正例 5,289，并写出 `data/model_dataset.parquet` 与 `data/feature_spec.json`。
@@ -52,8 +62,8 @@
 - `bank.freeze` 是 M2 的正式产物：读只读库 + `configs/base.yaml`，写出 `data/frozen/{train.parquet, valid.parquet, manifest.json, FROZEN.json}`。必须打印「冻结完成」以及 21,093/4,109、17,537/2,327、3,556/1,782、名额 356、7 条清洗规则命中 5 行（全是 R3 记账）。跑第二遍 `FROZEN.json` 的 sha256 必须不变。`--check` 只比对指纹，输出「冻结校验通过」。
 - `bank.reconcile` 是对账点 1：**不读冻结的 parquet**，直接从原始库重切一遍，再和 `data/frozen/manifest.json` 的账单逐项比（源文件指纹、配置指纹、原始行数/正例/列清单、窗口、两表行数/正例/内容指纹/日期范围、名额、特征数、目录一致性）。必须打印「对账通过：从原始库重建的两表与冻结账单逐项一致」，退出码 0；任何一项不一致就退出 1，且不回写冻结数据。它和 `--check` 不同：`--check` 比「今天重跑 vs 冻结」，`reconcile` 比「账单 vs 重建」。
 - 训练、评估、服务只读 `data/frozen/`，**不要再从原始库现算**；`data/processed/` 是临时产物，随时可删。
-- `pytest tests` 必须全过（425 项），按目录分：unit 289 / contract 20 / service 23 / architecture 41 / exam 52。
-  - unit 289：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 17（含 5 项运行时版本闸门）、漂移 11、对账 7、版本注册表 10、预测记录 12、标签回流 10、模型 vs 规则 8、告警与定时检查 33、追踪协议与两个后端 19、解释与模型的一致性 9（含主模型可解释门禁 2）、名额策略与阈值 19（分位点标定、A 口径两档、原始 float 往返、配置拼错键/策略名/越界值）、指标出口 7（13 个指标一处登记、方向、位数、报告表由登记表派生）。
+- `pytest tests` 必须全过（432 项），按目录分：unit 296 / contract 20 / service 23 / architecture 41 / exam 52。
+  - unit 296：schema 14、时间轴 14、冻结层 25、特征目录 14、配置 11、规则注册表 5、训练 20（含 13 指标手算、区间、报告）、校准与切片 10、模型包 17（含 5 项运行时版本闸门）、漂移 11、对账 7、版本注册表 10、预测记录 12、标签回流 10、模型 vs 规则 8、告警与定时检查 33、追踪协议与两个后端 19、解释与模型的一致性 10（含主模型可解释门禁 2 与基准值）、名额策略与阈值 19（分位点标定、A 口径两档、原始 float 往返、配置拼错键/策略名/越界值）、指标出口 7（13 个指标一处登记、方向、位数、报告表由登记表派生）、报告 JSON 2、全局解释 4。
   - contract 20：OpenAPI 的必填/范围/枚举/批量上限与模型包对账（6）；算法注册表与一致性参照（14，含注册表自检、两次训练逐位相同、`parity --check`、容差与人数判据）。
   - service 23：探针、字段级 422（含 NaN 不许炸）、批量上限、预测记录、无包时 503（干净检出时 `tests/support.py` 会先导出一个模型包）；另有热加载 4（指针换版本、坏指针保留旧模型、固定包关掉热加载）与服务指标 6（计数、延迟、等级、422 不计预测、不泄露特征值）。
   - unit 里另有故障演练 7（注入确定性与五项检查）与调参 6（内层切分边界、切点越界、选最大 AP）。
@@ -69,22 +79,25 @@
 3. 「未知」不填补、不删除、不当缺失：它是类别（`联系方式=未知` 13,020 行 / 28.80%，认购率全表最低一档）。
 4. 不改原始库 `data/bank-marketing.db`；不手改 `model_dataset.parquet` 与 `feature_spec.json`，它们只能由 `bank.build` 生成。
 5. 不用验证集/封存集调参、选模型、定名额。报任何指标都要写清：哪个集合、多少人、名额几个人。
-6. 不降低既有门槛：不改、不删、不跳过 `tests/` 里的断言；不写 `# type: ignore`、`# noqa` 让检查闭嘴。觉得断言有问题，停下来说明。
+6. 不降低既有门槛：不改、不删、不跳过 `tests/` 里的断言；不写 `# type: ignore`、`# noqa`、`# pragma: no cover` 让检查闭嘴。觉得断言有问题，停下来说明。
 7. 不把口径常量复制到 notebook 或临时脚本里；唯一出处是 `packages/core/src/bank/schema.py`，别处只引用。
 8. 不凭记忆写数字。报告里每个指标都要有本次命令输出对应——「报告数字与命令输出对不上」是任务书的一票否决项。
 9. 不改 `baselines/`（`baselines/SHA256SUMS` 是第一轮结果的文件封条）。`scripts/freeze_baseline.py --check` 必须通过；确实换了数字要重写封条，必须先说明改了哪张表、为什么，得到负责人同意才 `--write`。
-10. 不改 `tests/exam/` 的题目。考卷是人写的，你只改被测代码；考卷红了就是代码错了，不许连题目一起改绿。
+10. 不改 `tests/exam/` 的题目，也不改 `tests/architecture/` 里既有的守门断言。考卷和门闩都是人写的，你只改被测代码；红了就是代码错了，不许连题目/门闩一起改绿。
 11. 不手改 `models/serving/registry.json` 与 `audit.jsonl`。状态只能通过 `python -m bank.registry` 改，审计是只追加的事件流；绕过去改等于把「谁在线上、为什么」的证据抹掉。
 12. 不创建 `.github/`（本课程手工跑 `scripts/ci.py`，见卷一 A1）。
-13. **不照搬参考项目的文件或约定**。参考项目里的东西不等于本项目需要它；新增任何文件（`.gitattributes` 这种纯工程约定除外）都要能说出「本项目为什么需要」，说不出就不加。例子：`CLAUDE.md` 只有用 Claude Code 才有人读，本项目不用，2026-11-24 已删——别因为参考项目有就加回来。
+13. **不照搬参考项目的文件或约定**。参考项目里的东西不等于本项目需要它；新增任何文件（`.gitattributes` 这种纯工程约定除外）都要能说出「本项目为什么需要」，说不出就不加。例子：`CLAUDE.md` 只有用 Claude Code 才有人读，本项目不用，2026-11-24 已删——别因为参考项目有就加回来。参考项目的 `.agents/skills/`、`.claude/`、`docs/specs/`、`tests/acceptance/`、`scripts/sync_agent_files.py` 是它那套工具链的产物，本项目没有对应目录，别整建制搬；只用得上的**规矩**（写进本文件），不用它的**目录**。
+14. 不写指向未来步骤的占位：TODO、空函数、预留字段、预留配置段。接口以当前步骤真需要的为准；以后要加，到时候再加。
+15. 不修改 `sys.path`，不调用 `os.chdir`，不在 pytest 配置里加 `pythonpath`。导入靠 uv 装好的 editable 包，换个目录启动结果必须一样（`pyproject.toml` 已写明）。
 
 ## 四、怎么干活
 
-1. 开工先读：本文件 → `notebooks/数据口径说明.md` → `configs/features.yaml` → `packages/core/src/bank/schema.py` → `tests/unit/test_freeze.py`。
-2. 先给计划再动手：要新建/修改哪些文件、每个公开函数的签名、打算怎么验证。**等负责人确认**。
-3. 改完跑第二节的命令（至少 `pytest tests` + `scripts/ci.py`），贴输出；不顺带重构无关代码。
-4. 同一项检查修三轮还红就停下报告：贴失败输出和试过的办法。要改范围以外的文件，也先停。
-5. 交付顺序：改了哪些文件 → `git status --short` 与 `git diff --stat` 原文 → 命令输出的末尾几行。
+1. 开工先读：本文件 → 这一步的步骤卡（`docs/steps/<步>.md`）→ `notebooks/数据口径说明.md` → `configs/features.yaml` → `packages/core/src/bank/schema.py` → 相关测试（口径/数据改动先看 `tests/unit/test_freeze.py`）。
+2. 先跑一次 `pytest tests -q`（或相关目录），说清哪几项红、为什么红。已经在红的基础上，先报告再动手。
+3. 先给计划再动手：要新建/修改哪些文件、每个公开名字的签名、每条不变量怎么保证、副作用（冻结指纹/manifest/基线/模型包版本会不会变）、要加的依赖和 `uv add` 命令。计划在会话里说，不写成文件。**等负责人确认**。
+4. 每改一轮：先跑第二节的两条 ruff 自检 → `pytest tests -q` → `scripts\ci.py`，贴输出；不顺带重构无关代码。
+5. 同一项检查修三轮还红就停下报告：贴失败输出和试过的办法。要改范围以外的文件，也先停。
+6. 交付顺序：改了哪些文件 → `git status --short` 与 `git diff --stat` 原文 → 命令输出的末尾几行。
 
 ## 五、仓库约定
 
@@ -92,7 +105,7 @@
 
 ```
 packages/core|training|api   三包：core 谁都不依赖，training 与 api 互不依赖
-apps/web                     前端目录（M6 暂缓，技术栈待定，ADR 待写）
+apps/web                     前端页面（X10 扩展；任务书 M6 基础模块是模型解释，不是前端）
 configs/                     base.yaml 放口径数字；features.yaml 是字段唯一出处（含禁用列）；
                              model.yaml 放超参数；api.yaml 放服务设置；watch.yaml 放告警阈值与渠道；
                              tracking.yaml 放追踪后端与实验名；decision.yaml 放名额策略与次优带宽度
@@ -115,24 +128,98 @@ docs/demo.md                 演示单：八步命令 + 期望输出 + 失败时
 
 - 不进 Git：`data/raw/`、`data/processed/`、`data/*.db`、`data/*.parquet`、`models/`、`mlflow.db`、`mlruns/`、`.venv/`、工具缓存。
 - 进 Git：代码、`configs/`、`docs/`、`tests/`、`data/frozen/`（冻结集 + `FROZEN.json`）、`data/feature_spec.json`。
-- 依赖锁 `uv.lock` 进 Git。加依赖用 `uv add` / `uv lock`，命令要带 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`（沙箱挡了默认缓存目录，不带会报拒绝访问）。uv 在 `.venv\Scripts\uv.exe`。
+- 依赖锁 `uv.lock` 进 Git。加运行时依赖用 `uv add --package bank-core|bank-training|bank-api <包名>`，开发工具用 `uv add --dev <包名>`；不要手改 `uv.lock`。命令要带 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`（沙箱挡了默认缓存目录，不带会报拒绝访问）。uv 在 `.venv\Scripts\uv.exe`。
 
 ### 命名与语言
 
 - 原始中文列名一律保留原样：业务方是银行，中文列名是契约的一部分。代码标识符、文件名、目录名用英文；注释、文档、提交信息用中文。
 - 事件名/日志用英文「动词_名词」；日志里不写客户特征值。
 
+### 测试与契约
+
+- 自己补的测试放对应目录（`tests/unit|contract|service|architecture`），只许加、不许放宽；要改既有断言，先停下说明。
+- 测试数据在测试里现造；需要真实产物的测试（训练、模型包、对账、服务）只读 `data/frozen/` 与 `models/serving/`，临时副本放 `tmp_path`，不改原目录。
+- `docs/steps/` 的步骤卡写「目标/验收/不做」；验收是事前口径，失败就改代码或报告，不把验收改写成实现出来的样子。
+- `tests/exam/` 的考卷由人维护，智能体只读，不改题目。
+- 公开名字以契约为准：模型包 `bundle.json`（`model_bundle.v1`）、服务 OpenAPI、`configs/*.yaml` 的强校验 schema；不加没人要的别名、兼容层、预留参数。
+
 ### 提交
 
 - 一条提交说清一件已经做完的事，中文；五个人每人都要有提交（任务书要求，答辩看 git 历史）。
 
-## 六、当前进度与已知缺口
+## 六、各步留下的规矩
+
+> 只写已经落地的规矩，按模块分组；进度与事实看第七节。
+
+### 通用
+
+- 会增长的同类组件用注册表登记：清洗规则用 `rules.py` 的 `@rule` + `REGISTRY`，算法用 `@algorithm`，追踪后端用 `@tracker`。登记名一旦发布不改；加一个 = 加一个文件/函数 + 一行登记。
+- 错误类型按模块走：配置用 `ConfigError`、模型包用 `BundleError`、注册表用 `RegistryError`、追踪用 `TrackingError`；可预期的错误不要改成静默返回。
+
+### 口径与数据（M1 / M2）
+
+- 口径数字只写 `configs/base.yaml`，代码只经 `config.py` 读；`schema.py` 是常量、列名、禁用列的唯一出处，notebook 与临时脚本只引用、不复制。
+- 原始库只经 `raw.py`（`mode=ro` + `query_only`）读；重建日期把握手序号 `rowid` 落进数据集，不依赖 `SELECT *` 的返回顺序。
+- 清洗规则只在 `rules.py` 登记（按编码排序）；台账只追加、不删行；改规则要同步 `docs/spec.md` 台账与测试。
+- `data/model_dataset.parquet` 与 `feature_spec.json` 只由 `bank.build` 生成；`data/frozen/` 只由 `bank.freeze` 生成且只读；`data/processed/` 是临时产物。
+- 内容指纹只用 `repro.py`；改口径后按 `bank.build` → `bank.profile` → `bank.freeze` 重跑，再让 `--check` 与 `bank.reconcile` 过。
+- 行序就是时间序：切分按重建日期，不打乱不分层；缓冲 0 天是 ADR 0002 的决定，不是默认值。
+
+### 训练与评估（M3 / C-L2a–C-L3b）
+
+- 训练、评估、服务只读 `data/frozen/`，不从原始库现算。
+- 报告指标只从 `metrics.py` 出，指标清单登记在 `metric_specs.py`（中文名/方向/小数位），报告表由登记表派生；加指标两处一起改，并过 `test_metric_specs.py`。
+- 调参只在训练期内的内层时间窗（`tune.py`）；验证集不参与选参、不拟合校准（Platt/Isotonic），校准只报告。
+- 名额比例只在 `configs/base.yaml` 的 `quota.frac`；策略与两档切点在 `policy.py` + `configs/decision.yaml`；阈值存原始 float，不四舍五入。
+- 训练与服务共用 `features.py` / `explain.py`；不为服务另写一套预处理或解释。
+- 新算法 = `algorithms/` 下一个文件 + `@algorithm("名字")` 登记；`build_model` 只做分发，`configs/model.yaml` 的 `kind` 按注册表校验。
+- 报指标写清集合、人数、名额人数；训练期正例率约 13%、验证集约 50%，校准差要说明，不当 bug 修。
+
+### 模型包与注册表（M4 / D-L1–D-L3）
+
+- 服务只经 `bundle.load_bundle()` 加载模型包，不直接 `joblib.load`；没有 `runtime` 的老包直接拒绝。
+- 模型包目录一经写出不覆盖；换版本 = 新目录 + 新 `current.json`；`current.json` 只由导出/注册表流程改。
+- 状态只经 `python -m bank.registry` 改；`audit.jsonl` 只追加、先写后改；`export.py` 默认登记 `candidate`，`--promote` 才动线上指针。
+- 发布门禁先行：AP、名额内精确率、特征数、阈值选中人数（必须等于名额）任何一项不过，不许发布。
+
+### 服务（M5 / E-L2 / F-L2）
+
+- 请求/响应模型由模型包动态生成；不手写字段清单，不加模型包里没有的输入。
+- 字段级 422 的 `loc` 形如 `["body","年龄"]`；NaN/Inf 必须被拒，不能 500。
+- 预测记录 v2 不写客户特征值（只留 `features_hash`）；改记录格式必须升 `contract` 版本（`prediction_record.v3`），同步读取逻辑与测试。
+- 热加载每请求读 `current.json`；坏包/坏指针保留旧模型、记 `reload_failures`，指针修好自动恢复；`/metrics` 不泄露特征值。
+- 无模型包时服务照常启动：`/health` 200，`/ready` 与 `/v1/model` 503。
+
+### 漂移、告警与回流（M7 / F6 / F7）
+
+- PSI 只从 `drift.py` 出（等频 10 箱、边界只取基准集、缺失单独一箱、未见类别并「其他」）；关注线/告警线在 `configs/watch.yaml`。
+- 重训建议要求同一特征 PSI ≥0.25 连续两次；`watch.py` 只给建议、退出码 1，不自动重训。
+- 告警渠道失败降级成 warn，不让检查崩；告警和日志里不写客户特征值。
+- 标签回流只认 `backfill.py` 产出的 `labeled.jsonl` / `feedback.json`（契约 `feedback.v1`）；对不上号的 `request_id` 直接报错退出。
+
+### 追踪层（C-L1c）
+
+- 只有 `tracking/mlflow_backend.py` 能 import mlflow（架构测试用 AST 扫）；其余代码只认 `Tracker` 协议，测试用 `memory.py`。
+- `configs/tracking.yaml` 选后端；选中的后端必须已登记；URI 与实验名在配置里，不散落在代码。
+
+### 质量门、基线与回放（A1 / A2）
+
+- `scripts/ci.py` 五道门、覆盖率 85、两条 import 契约只能变严；加门/改门要同步 `gates()` 与 `tests/architecture/test_quality_gate.py`。
+- `baselines/` 只读；`freeze_baseline.py --check` 必须过；换数字要说明改哪张表、为什么，经负责人同意才 `--write`。
+- `tests/exam/` 与 `tests/architecture/` 的既有断言只读；考卷红了改代码，不改题目。
+- 文档数字只从命令输出抄：`bank.profile`、`bank.build`、`bank.freeze`、`evaluation_report.md`、`compare.md`、`drift.json`；没有出处的数字不写。
+- 新步骤能独立过门才打 `step-*` tag，并在 `docs/steps/` 补三行卡；没有 tag 的步在 `docs/steps/README.md` 记映射，不补假 tag。
+- `scripts/replay_steps.py` 按 tag 建干净 worktree 回放；新增 tag 要同步步骤卡与 `docs/steps/README.md`。
+
+## 七、当前进度与已知缺口
+
+> 历史与现状，不是规矩；规矩看第六节。这里的数字只在本次命令输出能对上时改。
 
 - 已完成 M1（口径与问题定义）：`docs/problem.md`（一句话定义、成功标准、非目标）、`docs/spec.md`（17 列逐列判定、派生列、禁用列、切分与名额口径、E1–E5 对照实验、清洗规则台账）、`docs/data_card.md`（来源许可、时间轴证据、漂移表、泄漏证据）、`docs/pitfalls.md`（9 条）、`docs/adr/0001`（数据集与行数口径）、`docs/adr/0002`（时间切分与窗口）、`packages/core/src/bank/timeaxis.py`、`packages/core/src/bank/profile.py`、`tests/unit/test_timeaxis.py`（14 项）。
 - 已完成 M2（数据管道与冻结）：`configs/base.yaml`（唯一口径来源）+ `packages/core/src/bank/config.py` 强校验（拼错键/重复键/越界值直接报错）、`raw.py`（`mode=ro` + `query_only` 唯一只读入口）、`clean.py`（R1–R7 清洗台账，不删行）、`split.py`（时间切分与缓冲）、`repro.py`（源/配置/内容三级指纹）、`freeze.py`（`python -m bank.freeze` 产出 `data/frozen/` 四件套 + `--check`）、`docs/adr/0003`（内容指纹与冻结）、`tests/unit/test_freeze.py`（25 项）。单测合计 53 项。
 - 已完成 M8 的工程底座（含清洗规则注册表 `rules.py`）：uv workspace 三包 + 依赖方向（`.importlinter` 两条契约 + 架构测试）、`configs/features.yaml` 33 个字段（含 8 个禁用列与禁用理由）+ `catalog.py` 与 `schema.py` 对账、`yamlkit.py` 严格 YAML、`scripts/ci.py` 五道门、`rules.py` 清洗规则注册表（7 条规则按编码排序登记，加规则只写一个函数）、测试目录按 `unit/contract/architecture/service` 分好。
 - 已完成 M3（训练与评估）：`packages/training/src/bank_training/` 六个模块 + `train.py` / `experiments.py` 两个入口、`configs/model.yaml`（超参数单独一份，改它不动冻结指纹）、`docs/adr/0005`（模型选择，含 A/B 与 RF 证据）、`docs/model_card.md`（指标、校准、限制）、`docs/spec.md` 第 6 节 E1–E5 回填、`tests/unit/test_training.py`（11 项）。**主模型逻辑回归 + 特征集 B（21 列，去掉月份三列）+ C=1.0**，验证集 AP 0.6498 / 名额内精确 0.7416 / 召回 0.1481 / Brier 0.2852，名额 356 人里打中 264 人；规则基线 AP 0.6412 / 精确 0.7640 / Brier 0.4924；4 个 run 与 5 个实验都落在 `mlflow.db`（`data/processed/runs.json` 存 run_id）。mlflow 追踪 URI 是 `sqlite:///<仓库>/mlflow.db`，实验名 `bank-marketing`。
-- 已完成 M4（模型包与版本）：`packages/core/src/bank/bundle.py`（`model_bundle.v1` 契约、`sha256(canonical_json)` 校验和、staging 原子写、不覆盖旧版本、`current.json` 指针）、`packages/core/src/bank/features.py` 与 `explain.py`（训练与服务共用的预处理与解释路径，所以 `bank_api` 不需要 import `bank_training`）、`packages/training/src/bank_training/export.py`（`python -m bank_training.export --version 1.0.0`，发布门禁 AP≥0.50、名额内精确率≥0.60、特征数≥10）、`docs/adr/0006-模型包与发布.md`、`tests/unit/test_bundle.py`（12 项）。当前线上版本 `models/serving/1.1.0`（1.0.0 降为 staging）：特征集 B 21 列、必填输入 15 列、等级切点 **优先≥0.57298 / 备选≥0.253228**（A 口径，见下一条 C-L1a）、验证集 AP 0.6498、名额内精确率 0.7416、mlflow run `7530c4281634419fa243470de1be3305`。模型包不进 Git，演示前要重跑 export。
+- 已完成 M4（模型包与版本）：`packages/core/src/bank/bundle.py`（`model_bundle.v1` 契约、`sha256(canonical_json)` 校验和、staging 原子写、不覆盖旧版本、`current.json` 指针）、`packages/core/src/bank/features.py` 与 `explain.py`（训练与服务共用的预处理与解释路径，所以 `bank_api` 不需要 import `bank_training`）、`packages/training/src/bank_training/export.py`（`python -m bank_training.export --version 1.1.0`，发布门禁 AP≥0.50、名额内精确率≥0.60、特征数≥10）、`docs/adr/0006-模型包与发布.md`、`tests/unit/test_bundle.py`（12 项）。当前线上版本 `models/serving/1.1.0`（1.0.0 降为 staging）：特征集 B 21 列、必填输入 15 列、等级切点 **优先≥0.57298 / 备选≥0.253228**（A 口径，见下一条 C-L1a）、验证集 AP 0.6498、名额内精确率 0.7416、mlflow run `7530c4281634419fa243470de1be3305`。模型包不进 Git，演示前要重跑 export。
 - 已完成 M5（服务）：`packages/api/src/bank_api/` 四个模块 + `configs/api.yaml`（批量上限 100、请求号前缀 bank、预测记录路径）、`docs/adr/0007-服务契约与错误码.md`。六条路由（`/metrics` 见 E-L2 条目）：`/health` 永远 200、`/ready` 与 `/v1/model` 在包缺失时 503、`/v1/predict`（字段级 422，`loc` 形如 `["body","年龄"]`）、`/v1/predict/batch`（上限 100）。请求模型由模型包 15 个输入列动态生成，类别列用运行时 `Literal` 内联 `enum`；每条预测追加一行 v2 记录到 `data/processed/predictions.jsonl`，不写客户特征值（只留 `features_hash`）。`python -m bank_api` 起服务，`/docs` 可打开。
 - 已完成 M7（漂移与回流）：`packages/core/src/bank/drift.py`（PSI：等频 10 箱、边界只取基准集、缺失单独一箱、类别未见值合并「其他」）、`packages/training/src/bank_training/drift.py`（`python -m bank_training.drift`，基准=训练集、对照默认验证集、落 `data/processed/drift.json` 与 mlflow run `m7-drift`）、`docs/adr/0008-漂移监控与回流.md`（阈值 0.1/0.25、只看 15 个原始输入 + score、标签回流与对照组、三条重训条件）、`tests/unit/test_drift.py`（11 项）。实测：联系月份 PSI 3.4028、住房贷款 0.8087、上次营销结果 0.6573、职业 0.4583、历史联系次数 0.3500、年龄 0.2797 为「严重」；score 1.0851；正例率 13.27% → 50.11%（+277.66%）。
 - 已完成 C-L2a（评估报全）：`metrics.py` 13 个互相自洽的指标（名额 8 + 排序 2 + 校准 3）、`two_views` 两种名额口径并列、`bootstrap_ci` 200 次按行重抽的 95% 区间、`report.py` 生成 `data/processed/evaluation_report.md` 并作为产物记进主模型 run、`docs/adr/0011-评估报全.md`。主模型区间：精确率 [0.7051, 0.7838]、召回 [0.1403, 0.1561]、AP [0.6286, 0.6777]、ROC-AUC [0.6262, 0.6654]、Brier [0.2750, 0.2938]；ECE 0.2292、log_loss 0.8080。基线封条因新增 8 个指标键而用 `--write` 重写过一次（旧 15 个键逐项核对相等）。
@@ -148,8 +235,8 @@ docs/demo.md                 演示单：八步命令 + 期望输出 + 失败时
 - 已完成 C-L2c（模型 vs 规则的名额取舍）：`packages/training/src/bank_training/compare.py`（`python -m bank_training.compare`：同一验证集上把逻辑回归与规则基线按 10%/15%/20% 三个名额各算一遍，输出 `data/processed/compare.md` 与 `.json` 并记一个 `c-l2c-compare` run）。实测——10%：模型 264 人 / 精确 0.7416，规则 272 人 / 0.7640；15%：403 / 0.7561 对 407 / 0.7636；20%：537 / 0.7553 对 550 / 0.7736。结论写进 ADR 0017：**模型没有比规则多抓人**（差 8/4/13 人，均在一个标准误内），但名额从 10% 放到 20% 精确率几乎不动（0.7553）而召回翻倍（0.1481→0.3013）；主模型仍是逻辑回归，理由是概率可校准（Brier 0.2852 对 0.4924）与单条可解释。`tests/unit/test_compare.py`（8 项）。
 - 已完成 F6（告警渠道与定时检查）：`packages/core/src/bank/alerts.py`（告警级别、console/file/webhook 三种渠道，渠道失败降级成 warn 而不是崩）、`packages/training/src/bank_training/watch.py`（`python -m bank_training.watch`：读 `drift.json` 分级、读 `feedback.json` 看覆盖率、可选读 `/metrics`；重训建议要求同一特征 PSI≥0.25 **连续两次**，历史落 `data/processed/watch_history.jsonl`；有 alert 退出码 1）、`configs/watch.yaml`（关注线 0.1 / 告警线 0.25 / 认购率 50% / 覆盖率 0.7，强校验）、`docs/adr/0018-告警渠道与定时检查.md`、`tests/unit/test_watch.py`（17 项）。实测：第一轮 info 0 / warn 5 / alert 7（6 个特征越线 + 认购率 +277.7%），第二轮多出 `retrain/psi_two_runs`，退出码 1。
 - 已完成 C-L1a（名额策略）：`packages/core/src/bank/policy.py` 把「名额比例」标定成两个**真实存在的分数**（验证集分位点，`method="higher"`，不插值），`configs/decision.yaml` 写策略名与次优带宽度并强校验（拼错键、策略名不认识、次优带宽度 ≤ 名额比例都当场报）。**口径选 A**（负责人 2026-11-24 拍板）：`优先` = 名额内全部（356 人，切点 0.57298），`备选` = 名额外的次优带（到 40% 分位，切点 0.253228），其余不建议。阈值**存原始 float 不四舍五入**——6 位小数会把边界上的人挤出去。`export.py` 用它冻结 `decision.level_cutoffs`，并加一道门禁：按阈值选中的人数与名额对不上就不许发布。模型包因此重导为 `1.1.0` 并重封基线（旧 `bundle-1.0.0.json` 快照删除，换成 `bundle-1.1.0.json`）。`docs/adr/0023-名额策略与阈值标定.md`、`docs/steps/C-L1a.md`、`tests/unit/test_policy.py`（19 项）。指标出口也是一处登记：`metric_specs.py` 写 13 个指标的中文名、方向（越高越好/越低越好）与小数位，报告表由它派生，`metrics.py` 导入时校验清单一致（`tests/unit/test_metric_specs.py` 7 项）。
-- 全量复核：`pytest tests` **425 项全过**、覆盖率 86%、`scripts/ci.py` 末行「质量门：全绿」；`scripts/replay_steps.py` 实测 **全量 21 个 `step-*` tag 一次跑通**（2026-11-24，`python -u scripts\replay_steps.py *> .tmp\replay-all.log`，末行「全部通过（21 个 tag）」、退出码 0、日志里 0 处「未通过」）。此前也分过四个批次单跑，结论一致。回放要先把 `data/bank-marketing.db` 拷进工作目录（它不进 Git），这一步由脚本自己做。讲义各步与本仓库落点（含没有 tag 的 B-L1/B-L2/E-L1a/A-L3）的完整映射表写在 `docs/steps/README.md`。
-- **未开始：M6 前端**，这是负责人的决定——他自己写，不要替他实现。设计卡在 `docs/modules/m6-前端页面.md`（目标/验收/不做），要实现时按任务书 M6：字段从 `GET /v1/model` 动态生成、结果卡、字段级错误、服务状态提示、只走 HTTP；接口已经就绪（`/v1/model` 返回 15 个输入字段，`/v1/predict` 30 秒内可接上）。
+- 全量复核：`pytest tests` **432 项全过**、覆盖率 86%、`scripts/ci.py` 末行「质量门：全绿」；`scripts/replay_steps.py` 实测 **全量 21 个 `step-*` tag 一次跑通**（2026-11-24，`python -u scripts\replay_steps.py *> .tmp\replay-all.log`，末行「全部通过（21 个 tag）」、退出码 0、日志里 0 处「未通过」）。此前也分过四个批次单跑，结论一致。回放要先把 `data/bank-marketing.db` 拷进工作目录（它不进 Git），这一步由脚本自己做。讲义各步与本仓库落点（含没有 tag 的 B-L1/B-L2/E-L1a/A-L3）的完整映射表写在 `docs/steps/README.md`。
+- **前端页面已写、已提交**：`apps/web/`（`node apps/web/server.mjs` 在 5173 起静态页并把 `/v1/*` 代理到 8000），字段从 `GET /v1/model` 动态生成、结果卡、字段级错误、服务状态提示、只走 HTTP；任务书基础模块 **M6 是模型解释**（见 `docs/modules/m6-模型解释.md`），页面按扩展 X10 计。接口已就绪（`/v1/model` 返回 15 个输入字段）。
 - **已关闭的口径问题：`联系方式` 不是隐私列**（负责人 2026-11-23 决定）。它存的是联系渠道类型（手机 / 固话 / 未知，13,020 行是「未知」），不是电话号码，不构成个人信息。因此它继续留在 21 个特征与 15 个必填输入里，分析与前端都照常使用。之前记过一条「待移除」的待办，已随这次决定作废——不要因为它听起来像隐私就去掉它，那样会让指标无故下降，还得改整条冻结/训练/导出/文档链。
 - 已定的口径（ADR 0002 为准，别再问）：窗口 **A = 2008-11-01~2010-11-17**（21,093 行 / 4,109 正例）；训练 `<2009-10-01`（17,537 / 2,327 / 13.27%）；验证 `≥2009-10-01`（3,556 / 1,782 / 50.11%）；名额 **356** 人；主口径名额制、阈值 0.5 只作对照；主模型逻辑回归 + **特征集 B**（21 列，去掉月份序/sin/cos 三列，E2 证据见 ADR 0005）、切分按时间、不打乱不分层、缓冲 0 天。
 - 两个会反复踩的事实，先记住：

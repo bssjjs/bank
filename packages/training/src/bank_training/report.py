@@ -7,8 +7,9 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -195,9 +196,27 @@ def render(report: Report) -> str:
 
 
 def write(path: Path, report: Report) -> Path:
-    """把报告写到 `path`（UTF-8、LF、末尾恰好一个换行），返回路径。"""
+    """把 Markdown 报告写到 `path`（UTF-8、LF、末尾恰好一个换行），返回路径。"""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render(report), encoding="utf-8", newline="\n")
+    return path
+
+
+def write_json(path: Path, report: Report) -> Path:
+    """把同一份 `Report` 写成机器可读的 JSON（UTF-8、LF、末尾恰好一个换行）。
+
+    数字与 Markdown 报告同源：都是 `Report` 的字段，不在写文件时重算。
+    用 `allow_nan=False` 让 NaN/Inf 当场报错，而不是写出不合法的 JSON。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(
+        asdict(report),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+        allow_nan=False,
+    )
+    path.write_text(payload + "\n", encoding="utf-8", newline="\n")
     return path
 
 

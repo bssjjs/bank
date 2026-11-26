@@ -8,7 +8,7 @@
 
 ```powershell
 git status --short          # 应该为空（.tmp/ 与 data/processed/ 不跟踪）
-.venv\Scripts\python.exe -m pytest tests -q   # 424 passed 以内，几十秒
+uv run python -m pytest tests -q   # 432 passed 以内，几十秒
 ```
 
 - 若 `models/serving/` 为空：演示第 2 步会重建，不用慌；服务第 3 步之前必须先跑第 2 步。
@@ -16,8 +16,8 @@ git status --short          # 应该为空（.tmp/ 与 data/processed/ 不跟踪
 ## 1. 一条命令从原始数据生成两表，打印行数与指纹；重跑指纹不变
 
 ```powershell
-.venv\Scripts\python.exe -m bank.freeze
-.venv\Scripts\python.exe -m bank.freeze --check
+uv run python -m bank.freeze
+uv run python -m bank.freeze --check
 ```
 
 该看到（2026-11-24 实测）：
@@ -35,8 +35,8 @@ git status --short          # 应该为空（.tmp/ 与 data/processed/ 不跟踪
 ## 2. 一条命令训练 + 一条命令导出模型包，打印基线与模型指标表、名额人数
 
 ```powershell
-.venv\Scripts\python.exe -m bank_training.train
-.venv\Scripts\python.exe -m bank_training.export --version 1.1.0 --promote
+uv run python -m bank_training.train
+uv run python -m bank_training.export --version 1.1.0 --promote
 ```
 
 该看到（`train` 会打印 5 个 run 与一张表）：
@@ -58,7 +58,7 @@ git status --short          # 应该为空（.tmp/ 与 data/processed/ 不跟踪
 ## 3. 一条命令起服务：`/health` 200、`/docs` 可开
 
 ```powershell
-.venv\Scripts\python.exe -m bank_api      # 另开一个窗口
+uv run python -m bank_api      # 另开一个窗口
 ```
 
 ```powershell
@@ -79,7 +79,7 @@ curl.exe -s -X POST http://127.0.0.1:8000/v1/predict -H "content-type: applicati
 
 该看到：`score`、`level`（优先 / 备选 / 不建议）、`factors` 前 5 条（`账户余额 +1.395`、`上次营销结果=成功 +1.118`…）、`advice`、`request_id`、`model_version`。
 
-- 前端（网页表单）由负责人自己写；接口已经就绪，字段从 `GET /v1/model` 读，提交走 `POST /v1/predict`。**答辩若还没前端，就用 `/docs` 的 Try it out 演示，同样算"填一条样本出结果"。**
+- 前端页面在 `apps/web/`；另开一个终端跑 `node apps/web/server.mjs`，打开 `http://127.0.0.1:5173`，字段从 `GET /v1/model` 读，提交走 `POST /v1/predict`。现场不方便开页面时，用 `/docs` 的 Try it out 演示，同样算“填一条样本出结果”。
 
 要讲的一句：因素 = 系数 × 标准化后取值，**全部因素之和 + 截距 == logit**，有测试逐行断言（ADR 0022）；所以界面上给的主要因素不是"近似解释"。
 
@@ -110,8 +110,8 @@ Get-Content data\processed\predictions.jsonl -Tail 1
 ## 7. 对「线上」数据跑漂移，至少一个特征 PSI
 
 ```powershell
-.venv\Scripts\python.exe -m bank_training.drift
-.venv\Scripts\python.exe -m bank_training.watch --no-send
+uv run python -m bank_training.drift
+uv run python -m bank_training.watch --no-send
 ```
 
 该看到（基准 = 训练集 17,537 行，对照 = 验证集 3,556 行）：
@@ -127,14 +127,14 @@ Get-Content data\processed\predictions.jsonl -Tail 1
 ## 8. 质量门全绿
 
 ```powershell
-.venv\Scripts\python.exe scripts\ci.py
+uv run python scripts\ci.py
 ```
 
-该看到：五道门依次 `[通过]`（ruff check、ruff format --check、mypy、lint-imports、pytest），末行 **`质量门：全绿`**，退出码 0；`pytest` 门里 **424 passed**、覆盖率 **86%**（门槛 85）。
+该看到：五道门依次 `[通过]`（ruff check、ruff format --check、mypy、lint-imports、pytest），末行 **`质量门：全绿`**，退出码 0；`pytest` 门里 **432 passed**、覆盖率 **86%**（门槛 85）。
 
 ```powershell
-.venv\Scripts\python.exe scripts\freeze_baseline.py --check   # 基线封条：9 个文件
-.venv\Scripts\python.exe scripts\replay_steps.py              # 可选：按 tag 回放，很慢
+uv run python scripts\freeze_baseline.py --check   # 基线封条：9 个文件
+uv run python scripts\replay_steps.py              # 可选：按 tag 回放，很慢
 ```
 
 要讲的一句：门清单由 `gates()` 公开，`tests/architecture/test_quality_gate.py` 15 项守着它不被调低；**改门槛必须过测试**（ADR 0004）。

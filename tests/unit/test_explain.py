@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 from unittest import mock
 
 import numpy as np
@@ -77,6 +78,21 @@ class ContributionIdentityTest(unittest.TestCase):
         )
         for entry, item in zip(shown, items[:5], strict=True):
             self.assertAlmostEqual(float(entry["contribution"]), round(item.contribution, 6))
+
+    def test_explain_with_base_exposes_intercept_and_probability(self) -> None:
+        row = self.rows.iloc[[0]]
+        payload = E.explain_one_with_base(self.pipeline, row, top_k=5)
+        intercept, _ = E.contributions(self.pipeline, row)
+        self.assertEqual(payload["unit"], "log_odds")
+        self.assertEqual(payload["method"], E.EXPLAIN_METHOD)
+        self.assertAlmostEqual(float(payload["base_value"]), intercept, places=12)
+        expected = 1.0 / (1.0 + np.exp(-intercept))
+        self.assertAlmostEqual(float(payload["base_probability"]), expected, places=12)
+        contributions = cast(list[dict[str, object]], payload["contributions"])
+        self.assertEqual(
+            [item["feature"] for item in contributions],
+            [item["feature"] for item in E.explain_one(self.pipeline, row, top_k=5)],
+        )
 
     def test_non_linear_model_is_rejected(self) -> None:
         spec = C.load_catalog()

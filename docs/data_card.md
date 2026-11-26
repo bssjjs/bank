@@ -7,9 +7,11 @@
 | 项 | 内容 |
 | --- | --- |
 | 数据集 | UCI Machine Learning Repository：Bank Marketing（`id=222`） |
-| 版本 | `bank-additional`（41,188 条的那版，按时间排序） |
-| 本机载体 | `data/bank-marketing.db`（SQLite，3.8 MiB，单表 `银行营销数据`，只读） |
+| 官方对应文件 | 下载包中的 `bank.zip` → `bank-full.csv`（45,211 条、16 个输入列 + 1 个标签列，按日期排序） |
+| 本机载体 | `data/bank-marketing.db`（SQLite，3.8 MiB，单表 `银行营销数据`，只读），官方 CSV 的中文 SQLite 版本 |
 | 许可 | CC BY 4.0（UCI 页面标注） |
+| 官方 CSV SHA256 | `d1513ec63b385506f7cfce9f2c5caa9fe99e7ba4e8c3fa264b3aaf0f849ed32d` |
+| 中文 SQLite SHA256 | `297201c8745a471cd11237a822b039d12a299e2eedc579c70f00adcb74fe387a` |
 | 个人信息 | 无姓名、电话、身份证、地址等直接标识；`年龄`、`职业`、`教育程度`、`婚姻状态` 属于准标识，已在 `spec.md` 第 3 节登记使用边界 |
 | 采集背景 | 葡萄牙某银行 2008–2010 年电话营销活动，一行 = 一次联系尝试 |
 
@@ -27,11 +29,13 @@
 
 列清单与逐列处理见 `spec.md` 第 1 节。
 
-## 3. 为什么行数比 UCI 的 41,188 多
+## 3. 使用哪一份 UCI 数据（2026-11-26 更正）
 
-UCI 页面上的 `bank-additional-full.csv` 是 41,188 行，本机库是 45,211 行。差异来自去重口径：完整版做过"同一客户在本次活动中重复联系"的合并，而本库保留了每次联系尝试（这也是为什么没有客户 ID 可用）。**本项目的建模单位是"一次联系尝试"**，所以保留下全部 45,211 行；这件事写在这里，避免答辩时被问住。
+UCI 页面同时提供多份文件：`bank-additional-full.csv` 是 41,188 行、20 个输入列；`bank-full.csv` 是 45,211 行、16 个输入列 + 1 个标签列，按日期排序。本机中文 SQLite 是 **45,211 行 × 17 列**，对应后者，不是前者经过"去重"得到的版本。此前本节把行数差异解释成去重口径，这是错误前提，现已更正；选择本机库的决策不变（ADR 0001）。
 
-> 复核方式：UCI 页面 `bank-additional.zip` 里的 `bank-additional-full.csv` 行数 41,188；本机库 `SELECT COUNT(*)` = 45,211。如果老师要求与 UCI 严格一致，需要重新导入并重跑全部口径——代价是重做 M2 与 M3，所以必须以 ADR 记录这个选择（ADR 0001）。
+**本项目的建模单位是"一次联系尝试"**，保留全部 45,211 行。公开来源是 [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing) 下载包中的 `bank.zip` → `bank-full.csv`。中文 SQLite 与英文 CSV 的列名和类别取值语言不同，分发时必须带同版 SQLite；从英文 CSV 自行转换时，要保持第 1 节的 17 个中文列名、中文类别取值和原始行序，并用 `bank.reconcile` 对账，不能直接换成 41,188 行的另一份文件。
+
+> 复核方式：官方 `bank-full.csv` 为 45,211 行；本机库 `SELECT COUNT(*)` = 45,211。两个文件的 SHA256 见第 1 节，命令见 README「原始数据、来源与指纹」。
 
 ## 4. 时间轴：行序就是时间序
 

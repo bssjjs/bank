@@ -1,0 +1,636 @@
+{
+  "base_rate": 0.501125,
+  "calibration": {
+    "base_rate": 0.501125,
+    "brier": 0.285249,
+    "ece": 0.229194,
+    "mean_score": 0.271931,
+    "n": 3556.0,
+    "worst_bin": "[0.1, 0.2)",
+    "worst_gap": 0.2837
+  },
+  "comparisons": [
+    {
+      "metrics": {
+        "accuracy_at_quota": 0.551744,
+        "ap": 0.64123,
+        "base_rate": 0.501125,
+        "brier": 0.492406,
+        "ece": 2.925759,
+        "f1_at_quota": 0.254443,
+        "fn_at_quota": 1510.0,
+        "fp_at_quota": 84.0,
+        "lift_at_quota": 1.5247,
+        "log_loss": 6.802857,
+        "n": 3556.0,
+        "positives": 1782.0,
+        "precision_at_quota": 0.764045,
+        "quota_n": 356.0,
+        "recall_at_quota": 0.152637,
+        "roc_auc": 0.650954,
+        "score_mean": 3.421822,
+        "t05_f1": 0.669436,
+        "t05_precision": 0.50441,
+        "t05_recall": 0.994949,
+        "t05_selected": 3515.0,
+        "t05_threshold": 0.5,
+        "tp_at_quota": 272.0
+      },
+      "name": "规则基线"
+    },
+    {
+      "metrics": {
+        "accuracy_at_quota": 0.522497,
+        "ap": 0.595907,
+        "base_rate": 0.501125,
+        "brier": 0.310405,
+        "ece": 0.251296,
+        "f1_at_quota": 0.2058,
+        "fn_at_quota": 1562.0,
+        "fp_at_quota": 136.0,
+        "lift_at_quota": 1.2332,
+        "log_loss": 0.884227,
+        "n": 3556.0,
+        "positives": 1782.0,
+        "precision_at_quota": 0.617978,
+        "quota_n": 356.0,
+        "recall_at_quota": 0.123457,
+        "roc_auc": 0.611611,
+        "score_mean": 0.252549,
+        "t05_f1": 0.24921,
+        "t05_precision": 0.637413,
+        "t05_recall": 0.154882,
+        "t05_selected": 433.0,
+        "t05_threshold": 0.5,
+        "tp_at_quota": 220.0
+      },
+      "name": "LR-A"
+    },
+    {
+      "metrics": {
+        "accuracy_at_quota": 0.547244,
+        "ap": 0.649808,
+        "base_rate": 0.501125,
+        "brier": 0.285249,
+        "ece": 0.229194,
+        "f1_at_quota": 0.24696,
+        "fn_at_quota": 1518.0,
+        "fp_at_quota": 92.0,
+        "lift_at_quota": 1.4798,
+        "log_loss": 0.807986,
+        "n": 3556.0,
+        "positives": 1782.0,
+        "precision_at_quota": 0.741573,
+        "quota_n": 356.0,
+        "recall_at_quota": 0.148148,
+        "roc_auc": 0.643812,
+        "score_mean": 0.271931,
+        "t05_f1": 0.370119,
+        "t05_precision": 0.759582,
+        "t05_recall": 0.244669,
+        "t05_selected": 574.0,
+        "t05_threshold": 0.5,
+        "tp_at_quota": 264.0
+      },
+      "name": "LR-B"
+    },
+    {
+      "metrics": {
+        "accuracy_at_quota": 0.548931,
+        "ap": 0.6229,
+        "base_rate": 0.501125,
+        "brier": 0.287486,
+        "ece": 0.214478,
+        "f1_at_quota": 0.249766,
+        "fn_at_quota": 1515.0,
+        "fp_at_quota": 89.0,
+        "lift_at_quota": 1.4966,
+        "log_loss": 0.793973,
+        "n": 3556.0,
+        "positives": 1782.0,
+        "precision_at_quota": 0.75,
+        "quota_n": 356.0,
+        "recall_at_quota": 0.149832,
+        "roc_auc": 0.602365,
+        "score_mean": 0.286647,
+        "t05_f1": 0.05646,
+        "t05_precision": 0.866667,
+        "t05_recall": 0.029181,
+        "t05_selected": 60.0,
+        "t05_threshold": 0.5,
+        "tp_at_quota": 267.0
+      },
+      "name": "RF-A"
+    }
+  ],
+  "intervals": {
+    "accuracy_at_quota": [
+      0.53233295,
+      0.56356905
+    ],
+    "ap": [
+      0.628600925,
+      0.6777292
+    ],
+    "brier": [
+      0.274954,
+      0.29383644999999997
+    ],
+    "ece": [
+      0.2123883,
+      0.2462331
+    ],
+    "f1_at_quota": [
+      0.23422805,
+      0.26003190000000004
+    ],
+    "fn_at_quota": [
+      1453.975,
+      1575.05
+    ],
+    "fp_at_quota": [
+      76.97500000000001,
+      105.0
+    ],
+    "lift_at_quota": [
+      1.40166,
+      1.55914
+    ],
+    "log_loss": [
+      0.78217735,
+      0.83014475
+    ],
+    "precision_at_quota": [
+      0.705056,
+      0.7837782249999999
+    ],
+    "recall_at_quota": [
+      0.1403268,
+      0.156087125
+    ],
+    "roc_auc": [
+      0.62616215,
+      0.665438325
+    ],
+    "tp_at_quota": [
+      251.0,
+      279.025
+    ]
+  },
+  "metrics": {
+    "accuracy_at_quota": 0.547244,
+    "ap": 0.649808,
+    "base_rate": 0.501125,
+    "brier": 0.285249,
+    "ece": 0.229194,
+    "f1_at_quota": 0.24696,
+    "fn_at_quota": 1518.0,
+    "fp_at_quota": 92.0,
+    "lift_at_quota": 1.4798,
+    "log_loss": 0.807986,
+    "n": 3556.0,
+    "positives": 1782.0,
+    "precision_at_quota": 0.741573,
+    "quota_n": 356.0,
+    "recall_at_quota": 0.148148,
+    "roc_auc": 0.643812,
+    "score_mean": 0.271931,
+    "tp_at_quota": 264.0
+  },
+  "n": 3556,
+  "notes": [
+    "名额 356 人 = 验证集 3,556 人 × 10%（base.yaml）",
+    "验证集是 2009-10 以后的数据、正例率约 50%，训练期只有 13%——分数系统性偏低、Brier 与 ECE 会难看，这是时期漂移不是 bug（ADR 0005 与模型卡）。",
+    "95% 区间是 200 次按行重抽的分位区间，名额按比例跟着行一起缩放；它只说明这批数据的抖动幅度，不是上线后的保证。",
+    "两种口径选中人数不同：名额口径固定 356 人，阈值 0.5 口径随分数分布变。",
+    "切片里的名额按该切片人数比例分配（k = 人数 × 名额比例，四舍五入），所以人数少的切片名额也少、数字更抖；少于 100 人的切片不报。"
+  ],
+  "positives": 1782,
+  "quota_n": 356,
+  "reliability": [
+    {
+      "bin": 0.0,
+      "count": 422.0,
+      "gap": 0.24531724266164645,
+      "high": 0.1,
+      "low": 0.0,
+      "mean_score": 0.07458797060849572,
+      "observed_rate": 0.31990521327014215
+    },
+    {
+      "bin": 1.0,
+      "count": 1158.0,
+      "gap": 0.28369996946816145,
+      "high": 0.2,
+      "low": 0.1,
+      "mean_score": 0.1523967490119767,
+      "observed_rate": 0.43609671848013815
+    },
+    {
+      "bin": 2.0,
+      "count": 870.0,
+      "gap": 0.1998486116387232,
+      "high": 0.3,
+      "low": 0.2,
+      "mean_score": 0.24382954928081702,
+      "observed_rate": 0.4436781609195402
+    },
+    {
+      "bin": 3.0,
+      "count": 316.0,
+      "gap": 0.18232704436487113,
+      "high": 0.4,
+      "low": 0.3,
+      "mean_score": 0.3398248543693061,
+      "observed_rate": 0.5221518987341772
+    },
+    {
+      "bin": 4.0,
+      "count": 216.0,
+      "gap": 0.2635467725668773,
+      "high": 0.5,
+      "low": 0.4,
+      "mean_score": 0.45404582002571525,
+      "observed_rate": 0.7175925925925926
+    },
+    {
+      "bin": 5.0,
+      "count": 328.0,
+      "gap": 0.21372148264919988,
+      "high": 0.6,
+      "low": 0.5,
+      "mean_score": 0.5545712002776294,
+      "observed_rate": 0.7682926829268293
+    },
+    {
+      "bin": 6.0,
+      "count": 212.0,
+      "gap": 0.08629726344657529,
+      "high": 0.7,
+      "low": 0.6,
+      "mean_score": 0.6354008497609719,
+      "observed_rate": 0.7216981132075472
+    },
+    {
+      "bin": 7.0,
+      "count": 32.0,
+      "gap": 0.18204231329738962,
+      "high": 0.8,
+      "low": 0.7,
+      "mean_score": 0.7242076867026104,
+      "observed_rate": 0.90625
+    },
+    {
+      "bin": 8.0,
+      "count": 2.0,
+      "gap": 0.1676701535576146,
+      "high": 0.9,
+      "low": 0.8,
+      "mean_score": 0.8323298464423854,
+      "observed_rate": 1.0
+    },
+    {
+      "bin": 9.0,
+      "count": 0.0,
+      "gap": 0.0,
+      "high": 1.0,
+      "low": 0.9,
+      "mean_score": 0.0,
+      "observed_rate": 0.0
+    }
+  ],
+  "slices": {
+    "婚姻状态": [
+      {
+        "ap": 0.652194,
+        "base_rate": 0.495327,
+        "n": 1926,
+        "positives": 954,
+        "precision": 0.73057,
+        "quota": 193,
+        "recall": 0.147799,
+        "skipped": false,
+        "slice": "婚姻状态",
+        "value": "已婚"
+      },
+      {
+        "ap": 0.652577,
+        "base_rate": 0.509682,
+        "n": 1291,
+        "positives": 658,
+        "precision": 0.775194,
+        "quota": 129,
+        "recall": 0.151976,
+        "skipped": false,
+        "slice": "婚姻状态",
+        "value": "未婚"
+      },
+      {
+        "ap": 0.63806,
+        "base_rate": 0.501475,
+        "n": 339,
+        "positives": 170,
+        "precision": 0.764706,
+        "quota": 34,
+        "recall": 0.152941,
+        "skipped": false,
+        "slice": "婚姻状态",
+        "value": "离婚"
+      }
+    ],
+    "年龄档": [
+      {
+        "ap": 0.631534,
+        "base_rate": 0.523238,
+        "n": 667,
+        "positives": 349,
+        "precision": 0.731343,
+        "quota": 67,
+        "recall": 0.140401,
+        "skipped": false,
+        "slice": "年龄档",
+        "value": "18-29"
+      },
+      {
+        "ap": 0.662622,
+        "base_rate": 0.482819,
+        "n": 1135,
+        "positives": 548,
+        "precision": 0.824561,
+        "quota": 114,
+        "recall": 0.171533,
+        "skipped": false,
+        "slice": "年龄档",
+        "value": "30-39"
+      },
+      {
+        "ap": 0.685578,
+        "base_rate": 0.524366,
+        "n": 513,
+        "positives": 269,
+        "precision": 0.764706,
+        "quota": 51,
+        "recall": 0.144981,
+        "skipped": false,
+        "slice": "年龄档",
+        "value": "40-49"
+      },
+      {
+        "ap": 0.652533,
+        "base_rate": 0.504219,
+        "n": 474,
+        "positives": 239,
+        "precision": 0.744681,
+        "quota": 47,
+        "recall": 0.146444,
+        "skipped": false,
+        "slice": "年龄档",
+        "value": "50-59"
+      },
+      {
+        "ap": 0.650951,
+        "base_rate": 0.491525,
+        "n": 767,
+        "positives": 377,
+        "precision": 0.74026,
+        "quota": 77,
+        "recall": 0.151194,
+        "skipped": false,
+        "slice": "年龄档",
+        "value": "60+"
+      }
+    ],
+    "教育程度": [
+      {
+        "ap": 0.666456,
+        "base_rate": 0.512704,
+        "n": 1535,
+        "positives": 787,
+        "precision": 0.753247,
+        "quota": 154,
+        "recall": 0.147395,
+        "skipped": false,
+        "slice": "教育程度",
+        "value": "中学"
+      },
+      {
+        "ap": 0.589193,
+        "base_rate": 0.427885,
+        "n": 416,
+        "positives": 178,
+        "precision": 0.690476,
+        "quota": 42,
+        "recall": 0.162921,
+        "skipped": false,
+        "slice": "教育程度",
+        "value": "小学"
+      },
+      {
+        "ap": 0.648335,
+        "base_rate": 0.545852,
+        "n": 229,
+        "positives": 125,
+        "precision": 0.73913,
+        "quota": 23,
+        "recall": 0.136,
+        "skipped": false,
+        "slice": "教育程度",
+        "value": "未知"
+      },
+      {
+        "ap": 0.660548,
+        "base_rate": 0.502907,
+        "n": 1376,
+        "positives": 692,
+        "precision": 0.76087,
+        "quota": 138,
+        "recall": 0.151734,
+        "skipped": false,
+        "slice": "教育程度",
+        "value": "高等教育"
+      }
+    ],
+    "职业": [
+      {
+        "n": 47,
+        "skipped": true,
+        "slice": "职业",
+        "value": "企业家"
+      },
+      {
+        "ap": 0.731097,
+        "base_rate": 0.558621,
+        "n": 145,
+        "positives": 81,
+        "precision": 0.8,
+        "quota": 15,
+        "recall": 0.148148,
+        "skipped": false,
+        "slice": "职业",
+        "value": "失业"
+      },
+      {
+        "ap": 0.682216,
+        "base_rate": 0.524476,
+        "n": 286,
+        "positives": 150,
+        "precision": 0.862069,
+        "quota": 29,
+        "recall": 0.166667,
+        "skipped": false,
+        "slice": "职业",
+        "value": "学生"
+      },
+      {
+        "n": 99,
+        "skipped": true,
+        "slice": "职业",
+        "value": "家政"
+      },
+      {
+        "ap": 0.645294,
+        "base_rate": 0.501938,
+        "n": 516,
+        "positives": 259,
+        "precision": 0.788462,
+        "quota": 52,
+        "recall": 0.158301,
+        "skipped": false,
+        "slice": "职业",
+        "value": "技术人员"
+      },
+      {
+        "ap": 0.673206,
+        "base_rate": 0.57764,
+        "n": 161,
+        "positives": 93,
+        "precision": 0.75,
+        "quota": 16,
+        "recall": 0.129032,
+        "skipped": false,
+        "slice": "职业",
+        "value": "服务业"
+      },
+      {
+        "n": 36,
+        "skipped": true,
+        "slice": "职业",
+        "value": "未知"
+      },
+      {
+        "ap": 0.675618,
+        "base_rate": 0.528504,
+        "n": 842,
+        "positives": 445,
+        "precision": 0.75,
+        "quota": 84,
+        "recall": 0.141573,
+        "skipped": false,
+        "slice": "职业",
+        "value": "管理人员"
+      },
+      {
+        "ap": 0.710722,
+        "base_rate": 0.5,
+        "n": 112,
+        "positives": 56,
+        "precision": 0.818182,
+        "quota": 11,
+        "recall": 0.160714,
+        "skipped": false,
+        "slice": "职业",
+        "value": "自由职业"
+      },
+      {
+        "ap": 0.724429,
+        "base_rate": 0.492126,
+        "n": 254,
+        "positives": 125,
+        "precision": 0.88,
+        "quota": 25,
+        "recall": 0.176,
+        "skipped": false,
+        "slice": "职业",
+        "value": "蓝领工人"
+      },
+      {
+        "ap": 0.555381,
+        "base_rate": 0.443038,
+        "n": 474,
+        "positives": 210,
+        "precision": 0.638298,
+        "quota": 47,
+        "recall": 0.142857,
+        "skipped": false,
+        "slice": "职业",
+        "value": "行政人员"
+      },
+      {
+        "ap": 0.655744,
+        "base_rate": 0.482877,
+        "n": 584,
+        "positives": 282,
+        "precision": 0.758621,
+        "quota": 58,
+        "recall": 0.156028,
+        "skipped": false,
+        "slice": "职业",
+        "value": "退休"
+      }
+    ],
+    "联系方式": [
+      {
+        "ap": 0.591049,
+        "base_rate": 0.423174,
+        "n": 397,
+        "positives": 168,
+        "precision": 0.775,
+        "quota": 40,
+        "recall": 0.184524,
+        "skipped": false,
+        "slice": "联系方式",
+        "value": "固话"
+      },
+      {
+        "ap": 0.684301,
+        "base_rate": 0.544391,
+        "n": 2906,
+        "positives": 1582,
+        "precision": 0.756014,
+        "quota": 291,
+        "recall": 0.139064,
+        "skipped": false,
+        "slice": "联系方式",
+        "value": "手机"
+      },
+      {
+        "ap": 0.146825,
+        "base_rate": 0.126482,
+        "n": 253,
+        "positives": 32,
+        "precision": 0.12,
+        "quota": 25,
+        "recall": 0.09375,
+        "skipped": false,
+        "slice": "联系方式",
+        "value": "未知"
+      }
+    ]
+  },
+  "title": "评估报告：m3-lr-主模型（特征集 B）",
+  "views": {
+    "fixed_threshold": {
+      "f1": 0.370119,
+      "precision": 0.759582,
+      "recall": 0.244669,
+      "selected": 574.0,
+      "threshold": 0.5
+    },
+    "top_k": {
+      "f1": 0.24696,
+      "precision": 0.741573,
+      "recall": 0.148148,
+      "selected": 356.0
+    }
+  }
+}

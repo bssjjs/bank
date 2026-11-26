@@ -26,6 +26,7 @@ from bank.catalog import load_catalog
 from bank.config import load_config
 from bank.repro import git_sha
 
+from bank_training import global_explain
 from bank_training import metrics as metrics_mod
 from bank_training import report as R
 from bank_training.baselines import WEIGHTS, rule_score
@@ -37,6 +38,7 @@ from bank_training.tracking import Tracker, get_tracker
 
 OUT_DIR = S.ROOT / "data" / "processed" / "runs"
 RUNS_JSON = S.ROOT / "data" / "processed" / "runs.json"
+REPORTS_DIR = S.ROOT / "reports"
 
 
 def _write_metrics(name: str, metrics: dict[str, float], extra: dict[str, Any]) -> Path:
@@ -86,6 +88,7 @@ def _main_report(
     feature_set: str,
     quota_frac: float,
     frame: pd.DataFrame,
+    extra_md: str = "",
 ) -> tuple[Path, dict[str, tuple[float, float]]]:
     """给主模型出一份 Markdown 评估报告：13 指标 + 区间 + 两种口径 + 校准 + 切片 + 对照。"""
     comparisons = [
@@ -118,8 +121,13 @@ def _main_report(
         notes=(note_quota, note_drift, note_ci, note_views, note_slices),
         frame=frame,
     )
-    path = R.write(S.ROOT / "data" / "processed" / "evaluation_report.md", built)
+    path = R.write(REPORTS_DIR / "evaluation_report.md", built)
+    if extra_md:
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write("\n\n" + extra_md.lstrip())
+    json_path = R.write_json(REPORTS_DIR / "evaluation_report.json", built)
     tracker.log_artifact(path, artifact_path="evaluation", run_id=run_id)
+    tracker.log_artifact(json_path, artifact_path="evaluation", run_id=run_id)
     return path, intervals
 
 
@@ -155,6 +163,8 @@ def main() -> int:
     main_name = f"m3-{mcfg.model.kind}-主模型"
     main_y: pd.Series | None = None
     main_score: np.ndarray | None = None
+    main_model: Any | None = None
+    main_x_valid: pd.DataFrame | None = None
 
     score = rule_score(valid).to_numpy(dtype="float64")
     run_id, metrics = _log_run(
@@ -209,6 +219,8 @@ def main() -> int:
         if name == main_name:
             main_y = y_valid
             main_score = np.asarray(score, dtype="float64")
+            main_model = model
+            main_x_valid = x_valid
         label = "主模型 LR-B" if name == main_name else f"{kind.upper()}-{subset}"
         rows.append({"name": label, **metrics})
 
@@ -236,8 +248,15 @@ def main() -> int:
         )
     print(f"追踪：{tracker.name}，{len(run_ids)} 个 run（实验 bank-marketing）")
 
-    if main_y is None or main_score is None:
+    if main_y is None or main_score is None or main_model is None or main_x_valid is None:
         raise AssertionError("主模型没有被训练：检查 configs/model.yaml 的 kind")
+
+    # 全局解释先算出来，作为评估报告的一节；同一份 md 也作为独立产物挂到主模型 run。
+    global_md, global_png = global_explain.run_for(
+        model=main_model, x=main_x_valid, y=main_y, quota_n=quota_n
+    )
+    global_section = global_md.read_text(encoding="utf-8")
+
     report_path, intervals = _main_report(
         tracker=tracker,
         main_name=main_name,
@@ -250,11 +269,17 @@ def main() -> int:
         feature_set=feature_set,
         quota_frac=cfg.quota.frac,
         frame=valid,
+        extra_md=global_section,
     )
     print("主模型 95% 区间（200 次按行重抽）：")
     for name in ("precision_at_quota", "recall_at_quota", "ap", "roc_auc", "brier"):
         print(f"  {name:<20}{metrics_mod.format_ci(intervals[name])}")
     print(f"评估报告：{report_path.relative_to(S.ROOT)}（已记进追踪 run）")
+
+    tracker.log_artifact(global_md, artifact_path="evaluation", run_id=run_ids[main_name])
+    if global_png is not None:
+        tracker.log_artifact(global_png, artifact_path="evaluation", run_id=run_ids[main_name])
+
     print(f"run_id 已写入 {RUNS_JSON.relative_to(S.ROOT)}")
     return 0
 

@@ -47,3 +47,6 @@ mlruns/
 Thumbs.db
 desktop.ini
 .idea/
+
+# ---------------- 交付包本身不进 Git ----------------
+*.bundle

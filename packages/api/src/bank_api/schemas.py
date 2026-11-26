@@ -25,7 +25,9 @@ _NUMERIC_TYPES = ("numeric", "time", "date", "id")
 class Factor(BaseModel):
     feature: str = Field(description="列名，类别特征带 =取值")
     value: str | None = Field(description="这一列的原始取值")
-    contribution: float = Field(description="对分数的贡献，正数推高、负数压低")
+    contribution: float = Field(
+        description="对 log-odds 的贡献，正数推高、负数压低（单位见 contribution_unit）"
+    )
 
 
 class Prediction(BaseModel):
@@ -34,6 +36,9 @@ class Prediction(BaseModel):
     score: float = Field(description="认购概率预测（0–1）")
     level: str = Field(description="优先 / 备选 / 不建议")
     factors: list[Factor] = Field(description="贡献最大的几列")
+    base_value: float = Field(description="基准值（截距，log-odds）：解释的起点")
+    base_probability: float = Field(description="基准值经 sigmoid 后的概率（0–1）")
+    contribution_unit: str = Field(description="factors 与 base_value 的单位，固定 log_odds")
     advice: str = Field(description="用途提示：这个等级该怎么用")
 
 

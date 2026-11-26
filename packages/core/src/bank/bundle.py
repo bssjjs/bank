@@ -242,6 +242,13 @@ class Bundle:
         frame = self.prepare(raw)
         return explain.explain_one(self.model, frame, top_k=self.doc.decision.explain_top_k)
 
+    def explain_with_base(self, raw: pd.DataFrame) -> dict[str, object]:
+        """单条解释的完整形态：基准值、基准概率、前 top_k 列贡献与单位。"""
+        frame = self.prepare(raw)
+        return explain.explain_one_with_base(
+            self.model, frame, top_k=self.doc.decision.explain_top_k
+        )
+
     def level(self, score: float) -> str:
         cutoffs = self.doc.decision.level_cutoffs
         if score >= cutoffs["优先"]:

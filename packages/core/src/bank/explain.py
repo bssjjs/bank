@@ -106,9 +106,7 @@ def contributions(model: Pipeline, row: pd.DataFrame) -> tuple[float, list[Contr
     return _intercept(lr), out
 
 
-def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict[str, object]]:
-    """返回贡献最大的前 `top_k` 列（按绝对值排序），带原始取值与贡献。"""
-    _, all_contributions = contributions(model, row)
+def _top_items(all_contributions: list[Contribution], top_k: int) -> list[dict[str, object]]:
     return [
         {
             "feature": item.feature,
@@ -117,6 +115,37 @@ def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict
         }
         for item in all_contributions[:top_k]
     ]
+
+
+def _sigmoid(value: float) -> float:
+    # 截距通常很小；夹住极端值，避免 exp 溢出成 inf 而把概率写成 NaN。
+    return float(1.0 / (1.0 + np.exp(-np.clip(value, -500.0, 500.0))))
+
+
+def explain_one(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> list[dict[str, object]]:
+    """返回贡献最大的前 `top_k` 列（按绝对值排序），带原始取值与贡献。"""
+    _, all_contributions = contributions(model, row)
+    return _top_items(all_contributions, top_k)
+
+
+def explain_one_with_base(model: Pipeline, row: pd.DataFrame, top_k: int = 5) -> dict[str, object]:
+    """单条解释的完整形态：基准值 + 前 `top_k` 列贡献 + 单位。
+
+    `base_value` 是模型截距，单位是 log-odds；`base_probability` 是它经
+    sigmoid 后的概率。两者都保留完整精度，调用方显示时再四舍五入。
+    `contributions` 的每一列仍是 log-odds 单位，满足
+    `base_value + sum(全部列贡献) == decision_function(row)`；这里只展示
+    前 `top_k` 列，所以展示值加不回原始输出是正常的（加回测试用
+    `contributions()` 拿全部列）。
+    """
+    intercept, all_contributions = contributions(model, row)
+    return {
+        "method": EXPLAIN_METHOD,
+        "unit": "log_odds",
+        "base_value": intercept,
+        "base_probability": _sigmoid(intercept),
+        "contributions": _top_items(all_contributions, top_k),
+    }
 
 
 def explain_many(

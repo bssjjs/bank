@@ -17,7 +17,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import uvicorn
 from bank import predictions as P
@@ -167,13 +167,15 @@ def create_app(
             ),
         )
         counters.count_prediction(level)
+        explanation = bundle.explain_with_base(frame)
+        contributions = cast(list[dict[str, object]], explanation["contributions"])
         factors = [
             Factor(
                 feature=str(item["feature"]),
                 value=None if item.get("value") is None else str(item["value"]),
                 contribution=float(str(item["contribution"])),
             )
-            for item in bundle.explain(frame)
+            for item in contributions
         ]
         return Prediction(
             request_id=rid,
@@ -181,6 +183,9 @@ def create_app(
             score=round(score, 6),
             level=level,
             factors=factors,
+            base_value=round(float(str(explanation["base_value"])), 6),
+            base_probability=round(float(str(explanation["base_probability"])), 6),
+            contribution_unit=str(explanation["unit"]),
             advice=LEVEL_ADVICE[level],
         )
 

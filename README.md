@@ -1,57 +1,90 @@
 # 银行电话营销：外呼名单排序
 
-课程分组项目。**在打电话之前**，用那时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。模型分数不占分：架构、取舍、能跑通、数字有出处才是分。
+课程项目（小组交付，分工见 `docs/contributions.md`）。**在打电话之前**，用那时能拿到的客户信息判断他会不会认购定期存款，再按每天的外呼名额排出今天该打给谁。模型分数不占分：架构、取舍、能跑通、数字有出处才是分。
+
+## 在另一台电脑上跑通
+
+前置条件只有两项：安装 [uv](https://docs.astral.sh/uv/)，以及把同版原始库放在 `data/bank-marketing.db`（获取方式见下节）。Python 3.12 和项目依赖由 uv 按 `.python-version`、`uv.lock` 准备，不需要预先安装 Python，也不需要先建 `.venv`。
+
+解压或克隆后进入仓库根目录，直接跑唯一质量门：
+
+```bash
+uv run python scripts/ci.py
+```
+
+`uv run` 会在首次运行时自动创建 `.venv` 并同步锁定依赖。想显式安装依赖也可以先执行 `uv sync --all-groups`，但不是质量门的前置条件。以下命令统一使用 `uv run python`，Windows、macOS、Linux 均不写死本机解释器路径。
+
+**分发 Git 包时**：只发被 Git 跟踪的内容（`pyproject.toml`、`uv.lock`、`.python-version`、`configs/`、`packages/`、`scripts/`、`tests/`、`baselines/`、`docs/`、`data/frozen/`、`data/feature_spec.json`），**不要把原始库 `data/bank-marketing.db` 打进 Git**。接收方按上节取得同版库、放到 `data/bank-marketing.db` 后再跑质量门；没有这个库时，`bank.build` / `bank.freeze` / `bank.reconcile` 以及依赖真实库与冻结集的测试会失败，这是缺数据，不是代码坏了。`.venv/`、`.tmp/`、`models/`、`data/processed/`、工具缓存与 `__pycache__/` 都不分发。
+
+## 原始数据、来源与指纹
+
+- 官方页面：[UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing)，许可 **CC BY 4.0**。
+- 官方文件：页面下载包中的 `bank.zip` → `bank-full.csv`（45,211 行、16 个输入列 + 1 个标签列，按日期排序）。**不是** 41,188 行的 `bank-additional-full.csv`。
+- 官方英文 `bank-full.csv` 的 SHA256：`d1513ec63b385506f7cfce9f2c5caa9fe99e7ba4e8c3fa264b3aaf0f849ed32d`。
+- 本项目实际读取的是课程提供的中文 SQLite 版本 `data/bank-marketing.db`，单表 `银行营销数据`，17 列、45,211 行；SHA256：`297201c8745a471cd11237a822b039d12a299e2eedc579c70f00adcb74fe387a`。
+- 英文 CSV 与中文 SQLite 是同一来源的不同载体，**不能直接改扩展名互相替代**。只拿到 Git 仓库而没有 SQLite 时，需要取得上述同版中文库，或按 `docs/data_card.md` 的列名、取值与行序约定转换后，再重跑 `bank.build`、`bank.freeze` 和 `bank.reconcile`；不要把 41,188 行的另一份数据混进来。
+
+Windows PowerShell 可用 `Get-FileHash data/bank-marketing.db -Algorithm SHA256` 核对；macOS/Linux 用 `shasum -a 256 data/bank-marketing.db`。
+
+## 复用声明
+
+本项目的工程骨架参考了课程参考项目 `diabetes-risk`，并对照了早期项目 `diabetes-v0` 的问题清单；业务数据、口径、训练评估和服务实现均针对 Bank Marketing 重新完成，**不是把参考项目改名后提交**。
+
+复用的主要是机制与实现思路：uv workspace 三包与依赖方向、`src` 布局、五道质量门及守门测试、严格 YAML/特征目录、规范化 JSON 与内容指纹、基线封条、按 `step-*` tag 回放、ADR/步骤卡/组件卡文档方式。`scripts/ci.py`、指纹工具、冻结与封条流程在参考设计上做了本项目适配；配置、字段、错误类型、测试数据和业务规则均按本仓库重写；具体取舍见 `docs/adr/`。
 
 ## 现在能跑什么
 
-```powershell
-# 1) 环境（首次）
-.venv\Scripts\uv.exe sync --all-groups
+```bash
+# 1) 环境（首次可选；uv run 也会自动完成）
+uv sync --all-groups
 
 # 2) 口径层：从原始库构建数据集并自检
-.venv\Scripts\python.exe -m bank.build
+uv run python -m bank.build
 
 # 3) 画像：M1 文档里所有数字的唯一出处
-.venv\Scripts\python.exe -m bank.profile
+uv run python -m bank.profile
 
 # 4) 冻结：按时序切分、算三级指纹、写 manifest（--check 只校验不重建）
-.venv\Scripts\python.exe -m bank.freeze
+uv run python -m bank.freeze
 
 # 4b) 对账点 1：从原始库重算一遍，与冻结账单逐项比（不一致退出码 1）
-.venv\Scripts\python.exe -m bank.reconcile
+uv run python -m bank.reconcile
 
 # 5) 训练与评估：两条基线 + 主模型，指标与产物全部记进 mlflow
-.venv\Scripts\python.exe -m bank_training.train
+uv run python -m bank_training.train
+
+# 5b) 全局解释：模型靠什么排序（线性贡献 + 置换重要度 + 蜂群图），产出 md 与 png
+uv run python -m bank_training.global_explain
 
 # 6) 对照实验 E1–E5（泄漏列、A/B 特征集、未知填众数、pdays 原列、随机切分）
-.venv\Scripts\python.exe -m bank_training.experiments
+uv run python -m bank_training.experiments
 
 # 7) 导出模型包：models/serving/<版本>/（不覆盖旧版本），登记进注册表但停在 candidate
-.venv\Scripts\python.exe -m bank_training.export --version 1.0.0
+uv run python -m bank_training.export --version 1.1.0
 # 8) 发布：门禁过了才动线上指针；回退是同一个命令换个版本号
-.venv\Scripts\python.exe -m bank.registry promote 1.0.0 --reason "首版上线"
-.venv\Scripts\python.exe -m bank.registry show
+uv run python -m bank.registry promote 1.1.0 --reason "首版上线"
+uv run python -m bank.registry show
 
 # 8) 起服务：另一窗口执行，/docs 可打开，127.0.0.1:8000
-.venv\Scripts\python.exe -m bank_api
+uv run python -m bank_api
 
 # 9) 漂移监控：拿「线上」数据对比训练集，逐特征算 PSI
-.venv\Scripts\python.exe -m bank_training.drift
-.venv\Scripts\python.exe -m bank_training.backfill --labels data\processed\labels.csv
-.venv\Scripts\python.exe -m bank_api          # 起服务；换模型只改 current.json，不用重启
+uv run python -m bank_training.drift
+uv run python -m bank_training.backfill --labels data/processed/labels.csv
+uv run python -m bank_api          # 起服务；换模型只改 current.json，不用重启
 
 # 9b) 模型 vs 规则：名额 10%/15%/20% 各抓到多少人（C-L2c）
-.venv\Scripts\python.exe -m bank_training.compare
+uv run python -m bank_training.compare
 
-# 10) 测试与质量门（交付前最后一关；pytest 425 项、覆盖率门槛 85）
-.venv\Scripts\python.exe -m pytest tests -q
-.venv\Scripts\python.exe scripts\ci.py
+# 10) 测试与质量门（交付前最后一关；pytest 432 项、覆盖率门槛 85）
+uv run python -m pytest tests -q
+uv run python scripts/ci.py
 
 # 11) 基线封条：第一轮结果的文件指纹，改了数字必须复跑
-.venv\Scripts\python.exe scripts\freeze_baseline.py --check
+uv run python scripts/freeze_baseline.py --check
 
 # 12) 回放：每个 step-* tag 各建一次干净环境、重建产物、跑质量门（慢）
-.venv\Scripts\python.exe scripts\replay_steps.py
+uv run python scripts/replay_steps.py
 ```
 
 冻结的基线数字（`python -m bank.freeze` 输出，改数据或口径后必须重跑核对）：
@@ -65,7 +98,7 @@
 | 每日名额 | 356 人（验证集 3,556 × 10%，向上取整） |
 | 清洗 | 7 条规则命中 5 行，全是 R3 记账，无删行 |
 
-评估报全：13 个互相自洽的指标（名额 8 + 排序 2 + 校准 3）、两种名额口径并列、200 次按行重抽的 95% 区间、Markdown 报告 `data/processed/evaluation_report.md` 随主模型 run 记进 mlflow。
+评估报全：13 个互相自洽的指标（名额 8 + 排序 2 + 校准 3）、两种名额口径并列、200 次按行重抽的 95% 区间、Markdown 与 JSON 两份报告（`reports/evaluation_report.md` / `.json`）随主模型 run 记进 mlflow。
 校准与切片：报告里另有 10 箱可靠性表（平均分 0.2719 vs 基率 0.5011、ECE 0.2292）与五张切片表（职业 / 教育程度 / 联系方式 / 婚姻状态 / 年龄档）；名额按切片人数比例分配。**只报告不校准**——验证集不许拟合校准器（ADR 0012）。
 
 主模型结果（`python -m bank_training.train` 输出，验证集 3,556 人 / 名额 356 人）：
@@ -79,11 +112,11 @@
 
 主模型名额内打中 264 人；规则基线打中 272 人，但概率质量差一倍（Brier 0.49 vs 0.29），取舍见 `docs/adr/0005-模型选择.md`。
 
-模型包（`python -m bank_training.export --version 1.0.0` 输出）：
+模型包（`python -m bank_training.export --version 1.1.0` 输出）：
 
 | 事项 | 数字 |
 | --- | --- |
-| 版本与契约 | `1.0.0` / `model_bundle.v1` |
+| 版本与契约 | `1.1.0` / `model_bundle.v1` |
 | 特征与必填输入 | 21 列 / 15 个原始字段 |
 | 等级切点 | 优先 ≥ 0.57298，备选 ≥ 0.253228（名额边界与 40% 分位，验证集分数分位数，不是概率阈值） |
 | 校验和 | `bundle.json` 与 `model.joblib` 各一份 sha256，加载时都对 |
@@ -158,9 +191,9 @@
 `bank.features.build_preprocessor`，否则训练与服务走的不是同一条路）。
 `configs/model.yaml` 的 `kind` 改成按注册表校验，加算法不用改枚举。
 
-```powershell
-.venv\Scripts\python.exe -m bank_training.parity --write   # 重算参照（改了算法或数据才用）
-.venv\Scripts\python.exe -m bank_training.parity --check   # 与 baselines/v1/algorithm_parity.json 比
+```bash
+uv run python -m bank_training.parity --write   # 重算参照（改了算法或数据才用）
+uv run python -m bank_training.parity --check   # 与 baselines/v1/algorithm_parity.json 比
 ```
 
 `--check` 判两件事：四项指标（AP / ROC-AUC / 名额内精确率 / 名额内召回）在 `1e-6` 内一致，
@@ -246,7 +279,7 @@ docs/               problem / spec / data_card / pitfalls / adr / modules / step
 | `docs/steps/` | 每个步骤三行：目标 / 验收 / 不做；文件名对应 `step-*` tag |
 | `docs/cards/` | 组件卡九节：指纹规范化、配置加载、特征目录 |
 | `baselines/` | 第一轮结果的快照与 `SHA256SUMS` 封条，`--check` 不通过就是有数字被改过 |
-| `docs/notes/参考项目经验.md` | 两个参考项目哪些机制值得搬 |
+
 | `notebooks/数据口径说明.md` | 早期口径分析与结论（§2.5 已更正为按时间切分） |
 
 ## 依赖

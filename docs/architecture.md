@@ -25,7 +25,7 @@
 
 ### 1.3 成功标准（可验收）
 
-- 名额内精确率 ≥ 75%、召回率 ≥ 30%、AP ≥ 两条基线中较好者；ROC-AUC 与 Brier 只报告不设门槛（理由见 `docs/model_card.md`：时期漂移下 Brier 天然偏低）。
+- 名额内精确率目标 ≥ 75%、AP ≥ 两条基线中较好者；召回率只报告（原 30% 与名额 356 不相容，上限 19.98%，已按文档笔误处理）；ROC-AUC 与 Brier 只报告不设门槛（理由见 `docs/model_card.md`：时期漂移下 Brier 天然偏低）。
 - 现状：名额内精确率 74.16%（差 0.84pp，如实记录）、召回 14.81%、AP 0.6498（高于规则基线 0.6412 与 LR-A 0.5959）。
 - 演示线八步必须现场走通，见第 6 节。
 
@@ -41,7 +41,7 @@
 | 追踪协议与两个后端（讲义 C-L1c） | `Tracker` 协议 + `TRACKERS` 注册表；`memory`/`mlflow` 两个实现；**只有 `tracking/mlflow_backend.py` 能 import mlflow**，由 AST 架构测试守着；后端与实验名进 `configs/tracking.yaml` | `packages/training/src/bank_training/tracking/` | ADR 0021 | `pytest tests/unit/test_tracking.py tests/architecture/test_layers.py` |
 | 解释能加回分数（讲义 C-L1b） | 单条解释返回全部列贡献且不四舍五入；`Σ贡献 + 截距 == decision_function`、`sigmoid(决策值) == predict_proba` 逐行断言 | `explain.py` | ADR 0022 | `pytest tests/unit/test_explain.py` |
 | 评估报全（讲义 C-L2a） | 13 个指标同源自洽、两种名额口径并列、200 次按行重抽的 95% 区间、报告进训练运行 | `metrics.py` / `report.py` | ADR 0011 | `python -m bank_training.train` |
-| 模型包的运行时血统与版本闸门（讲义 D-L1） | `bundle.json` 带 `runtime`（python/sklearn/pandas/numpy）；加载前比对 sklearn 主次版本与 Python 主版本，不一致拒绝加载 | `bundle.py` | ADR 0020 | `python -m bank_training.export --version 1.0.0` |
+| 模型包的运行时血统与版本闸门（讲义 D-L1） | `bundle.json` 带 `runtime`（python/sklearn/pandas/numpy）；加载前比对 sklearn 主次版本与 Python 主版本，不一致拒绝加载 | `bundle.py` | ADR 0020 | `python -m bank_training.export --version 1.1.0` |
 | 新增算法只加一个文件（讲义 C-L2b） | `algorithms/` 一文件一算法 + `@algorithm` 登记 + 惰性 import；`parity` 冻结四项指标与逐条分数指纹，容差 1e-6、人数必须相等 | `algorithms/__init__.py` / `algorithms/linear.py` / `algorithms/forest.py` / `parity.py` | ADR 0019 | `python -m bank_training.parity --check` |
 | 模型比规则强多少、名额要不要放宽（讲义 C-L2c） | 同一验证集、规则权不调、名额当自变量；10/15/20% 三档各算抓中人数，结论如实写 | `compare.py` | ADR 0017 | `python -m bank_training.compare` |
 | 校准与切片（讲义 C-L3a） | 10 箱可靠性表 + 五张切片表；名额按切片人数比例分配、少于 100 人不报；校准只报告不拟合 | `calibration.py` / `slices.py` / `report.py` | ADR 0012 | `python -m bank_training.train` |
@@ -54,7 +54,7 @@
 | 名额制决策 | `quota_n = ceil(n_valid × frac)`，验证集算名额 | `metrics.py` + `config.py` | ADR 0002 / 0005 | `python -m bank_training.train` |
 | 运行记录 | 每次训练一个 mlflow run（params/tags/metrics/artifacts） | `train.py` `_log_run` | `docs/model_card.md` | `python -m bank_training.train` |
 | 单条解释 | 线性贡献 = 系数 × 标准化后取值，取 |贡献| 前 5 | `packages/core/src/bank/explain.py` | ADR 0005 | `pytest tests/unit/test_training.py` |
-| 模型包六项 | `bundle.json` + `model.joblib` + `current.json` | `bundle.py` | ADR 0006 | `python -m bank_training.export --version 1.0.0` |
+| 模型包六项 | `bundle.json` + `model.joblib` + `current.json` | `bundle.py` | ADR 0006 | `python -m bank_training.export --version 1.1.0` |
 | 缺列拒绝 | `Bundle.prepare` 先查 `required_columns` | `bundle.py` `MissingColumnsError` | ADR 0006 | `tests/unit/test_bundle.py` |
 | 不覆盖旧版本 | 目标目录已存在直接报错 + staging 原子改名 | `bundle.write_bundle` | ADR 0006 | 同上 |
 | 字段级 422 | 请求模型由模型包生成，`loc` 前置 `body` | `api/schemas.py` + `api/app.py` | ADR 0007 | `pytest tests/service` |
@@ -66,7 +66,7 @@
 | 注册表 | 清洗规则按编码登记，台账顺序可 diff | `rules.py` | ADR 0004 | `pytest tests/unit/test_rules.py` |
 | 质量门 | 五道门一条命令，末行「质量门：全绿」 | `scripts/ci.py` | 本文件 §7 | `python scripts/ci.py` |
 | 告警与定时检查 | 读漂移/回流/服务指标，按阈值分级，渠道可换；连续两轮越线才建议重训 | `bank/alerts.py` + `bank_training/watch.py` | ADR 0018 | `python -m bank_training.watch` |
-| 文档与 ADR | 9 份 ADR + 9 张模块卡 + 本文件 | `docs/adr/` `docs/modules/` | — | — |
+| 文档与 ADR | 22 份 ADR + 10 张模块卡 + 本文件 | `docs/adr/` `docs/modules/` | — | — |
 
 ## 3. 模块图与分层
 
@@ -228,8 +228,7 @@ bank/
     ├── adr/0001–0023（0009 随 M6 暂缓撤回，编号不复用）
     ├── modules/m1–m9
     ├── steps/                步骤卡：每个 step-* tag 一张，含讲义步
-    ├── cards/                组件卡：指纹 / 配置 / 特征目录 / 服务 / 告警
-    └── notes/参考项目经验.md
+    └── cards/                组件卡：指纹 / 配置 / 特征目录 / 服务 / 告警
 ```
 
 ## 6. 两条流程
@@ -265,8 +264,8 @@ bank/
 - M4 模型包：`model_bundle.v1`、校验和、staging 原子写、不覆盖、`current.json`、发布门禁、运行时血统（ADR 0006 / 0020）、四状态注册表与审计（ADR 0013）、主模型必须可解释（ADR 0022）。
 - M5 服务：6 条路由（含 `/metrics`）、字段级 422、批量上限、v2 预测记录、`/docs`、按指针热加载（ADR 0007 / 0015）。
 - M7 漂移：PSI（等频 10 箱、边界取基准、缺失单独一箱、未见类别合并）、`drift.json` 契约、`m7-drift` run、回流与三条重训条件、告警渠道与定时检查、注入演练与调参（ADR 0008 / 0016 / 0018）。
-- M8 底座：三包 + import 契约 + AST 测试、七份 YAML 强校验、33 字段特征目录、清洗规则注册表、五道门（覆盖率门槛 85）、424 项测试、`AGENTS.md`、基线封条与 tag 回放（ADR 0004）。
-- M9 文档：本文档、22 份 ADR（0001–0023，缺 0009）、9 张模块卡、23 张步骤卡、5 张组件卡、贡献表。
+- M8 底座：三包 + import 契约 + AST 测试、七份 YAML 强校验、33 字段特征目录、清洗规则注册表、五道门（覆盖率门槛 85）、432 项测试、`AGENTS.md`、基线封条与 tag 回放（ADR 0004）。
+- M9 文档：本文档、22 份 ADR（0001–0023，缺 0009）、10 张模块卡、23 张步骤卡、5 张组件卡、贡献表。
 - 讲义对照步：A1 地基与守门、A2 基线与考卷与回放、C-L1a 名额策略与指标出口、C-L1b 特征工程/模型工厂/解释一致性、C-L1c 追踪协议与两个后端、C-L2a 评估报全、C-L2b 算法注册表与一致性参照、C-L2c 模型与规则的名额取舍、C-L3a 校准与切片、D-L1 模型包血统、D-L2/D-L3 注册表与审计、E-L2 热加载与指标、F-L2 预测记录 v2 与回流、F6 告警与定时检查、F7 故障演练、C-L3b 调参。B-L2 的 sources/cleaning/builder/reconcile 四段在 M2 里一次落地，映射写在 `docs/steps/README.md`。
 
 ### 7.2 没做（以及为什么）

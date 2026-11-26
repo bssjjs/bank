@@ -96,6 +96,12 @@ class ApiTest(unittest.TestCase):
         self.assertTrue(body["advice"])
         self.assertTrue(body["request_id"].startswith("bank-"))
         self.assertEqual(body["model_version"], self.bundle.version)
+        self.assertEqual(body["contribution_unit"], "log_odds")
+        self.assertGreaterEqual(body["base_probability"], 0.0)
+        self.assertLessEqual(body["base_probability"], 1.0)
+        for factor in body["factors"]:
+            self.assertIn("feature", factor)
+            self.assertIn("contribution", factor)
 
     def test_out_of_range_is_422_on_that_field(self) -> None:
         payload = self._sample()
