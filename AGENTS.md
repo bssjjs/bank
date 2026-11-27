@@ -127,7 +127,9 @@ docs/demo.md                 演示单：八步命令 + 期望输出 + 失败时
 
 - 不进 Git：`data/raw/`、`data/processed/`、`data/*.db`、`data/*.parquet`、`models/`、`mlflow.db`、`mlruns/`、`.venv/`、工具缓存。
 - 进 Git：代码、`configs/`、`docs/`、`tests/`、`data/frozen/`（冻结集 + `FROZEN.json`）、`data/feature_spec.json`。
-- 依赖锁 `uv.lock` 进 Git。加运行时依赖用 `uv add --package bank-core|bank-training|bank-api <包名>`，开发工具用 `uv add --dev <包名>`；不要手改 `uv.lock`。命令要带 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`（沙箱挡了默认缓存目录，不带会报拒绝访问）。uv 在 `.venv\Scripts\uv.exe`。
+- 依赖锁 `uv.lock` 进 Git。加运行时依赖用 `uv add --package bank-core|bank-training|bank-api <包名>`，开发工具用 `uv add --dev <包名>`；不要手改 `uv.lock`。
+- **命令一律 `uv run …`**：`uv sync` 之后直接 `uv run python -m pytest tests -q`、`uv run python scripts/ci.py`。不要敲 `.venv\Scripts\python.exe`，也不用激活虚拟环境——文档、演示单、给别人的说明里都只写 `uv run` 开头的命令。
+- 例外只在受限沙箱：那里 uv 的默认缓存目录不可写，要临时带 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`；普通终端不需要。`uv` 已在 PATH（`uv --version`）。
 
 ### 命名与语言
 

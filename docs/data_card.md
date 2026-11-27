@@ -107,7 +107,7 @@ UCI 页面同时提供多份文件：`bank-additional-full.csv` 是 41,188 行�
 ## 8. 复现命令
 
 ```powershell
-.venv\Scripts\python.exe -m bank.profile
+uv run python -m bank.profile
 ```
 
 输出末尾会写出 `data/processed/profile_raw.json`（不进 Git），本文件的第 2、4、5、6、7 节数字全部来自它。

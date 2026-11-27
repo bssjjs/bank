@@ -37,6 +37,6 @@
 ## 四、当前仓库事实
 
 - 分支 `main`；里程碑 tag：`m1-topic`（口径）、`m2-design`（冻结）、`m3-mvp`（服务）、`frontend-draft`（页面草稿）、`final`（当前交付点，已指向最新提交）；另有 21 个 `step-*` tag（每个都能被 `scripts\replay_steps.py` 独立回放）。
-- 质量门：`.venv\Scripts\python.exe scripts\ci.py` 末行「质量门：全绿」；`scripts\freeze_baseline.py --check` 校验第一轮数字没被改过。
+- 质量门：`uv run python scripts\ci.py` 末行「质量门：全绿」；`scripts\freeze_baseline.py --check` 校验第一轮数字没被改过。
 - 数据与模型包不进 Git：`data/frozen/` 进 Git；`data/processed/`、`models/`、`mlflow.db` 不进；换机器后按 `README.md` 重跑即可复现全部数字（`bank.freeze` → `bank_training.train` → `export`）。
 - 演示单：`docs/demo.md`（八步命令、期望输出、失败排查、六个必问的答案出处）。

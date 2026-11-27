@@ -15,7 +15,7 @@
 ## 怎么用
 
 ```powershell
-.venv\Scripts\python.exe scripts\freeze_baseline.py --check   # 基线没被改过才算过
+uv run python scripts\freeze_baseline.py --check   # 基线没被改过才算过
 ```
 
 `--check` 分三类报：缺失、内容变了、多出（不在封条里）。质量门里跑的就是这一条。
@@ -26,7 +26,7 @@
 这时跑：
 
 ```powershell
-.venv\Scripts\python.exe scripts\freeze_baseline.py --write
+uv run python scripts\freeze_baseline.py --write
 ```
 
 然后在提交信息里写清"为什么基线变了"。人手里改这里的 JSON 一律算篡改：那等于把参照物

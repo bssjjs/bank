@@ -2,7 +2,7 @@
 
 > 这份是**答辩当天的操作单**，不是设计文档。八步对应任务书「演示线」原文，每步只写：命令、该看到什么、看不到时查哪里。
 > 所有数字都是 2026-11-24 在本仓库跑出来的；现场以本次输出为准，**报告里引用的数字必须来自本次输出**（任务书一票否决项）。
-> 前置：`cd C:\Users\guojihuanjing\Desktop\bank`；一次准备 `$env:UV_CACHE_DIR=".venv\.tmp\uv-cache"; $env:UV_LINK_MODE="copy"`（装依赖才需要）。
+> 前置：`cd` 到仓库根目录；所有命令都用 `uv run` 跑（先 `uv sync` 装一次依赖即可，不用激活虚拟环境，也不要直接敲 `.venv\Scripts\python.exe`）。
 
 ## 0. 开场前 3 分钟：确认工作区干净、依赖在
 
@@ -122,18 +122,18 @@ uv run python -m bank_training.watch --no-send
 
 要讲的一句：**这不是数据错误，是真实的时期漂移**（日历推进 + 前几次营销的客户被筛过），所以模型概率系统性偏低、Brier 难看，我们报校准指标时如实写，不用验证集去拟合校准器（ADR 0008 / 0012）。
 
-再补一句演练：`python -m bank_training.drill` 注入已知漂移（数值 PSI 12.4432、类别 3.1173、标签 +59.7%），同时断言没动的列（婚姻状态 0.0084）不报警——证明监控是"能响"的，不是摆设（ADR 0016）。
+再补一句演练：`uv run python -m bank_training.drill` 注入已知漂移（数值 PSI 12.4432、类别 3.1173、标签 +59.7%），同时断言没动的列（婚姻状态 0.0084）不报警——证明监控是"能响"的，不是摆设（ADR 0016）。
 
 ## 8. 质量门全绿
 
 ```powershell
-uv run python scripts\ci.py
+uv run python scripts/ci.py
 ```
 
 该看到：五道门依次 `[通过]`（ruff check、ruff format --check、mypy、lint-imports、pytest），末行 **`质量门：全绿`**，退出码 0；`pytest` 门里 **435 passed**、覆盖率 **86%**（门槛 85）。
 
 ```powershell
-uv run python scripts\freeze_baseline.py --check   # 基线封条：9 个文件
+uv run python scripts/freeze_baseline.py --check   # 基线封条：9 个文件
 uv run python scripts\replay_steps.py              # 可选：按 tag 回放，很慢
 ```
 
@@ -152,7 +152,7 @@ uv run python scripts\replay_steps.py              # 可选：按 tag 回放，�
 
 ## 附：出问题时先看这几处
 
-- **命令报「找不到模型包」**：先跑 `python -m bank_training.export --version 1.1.0 --promote`。
+- **命令报「找不到模型包」**：先跑 `uv run python -m bank_training.export --version 1.1.0 --promote`。
 - **服务 `/ready` 503**：`models/serving/current.json` 是否指向存在的版本目录；`/metrics` 的 `reload.last_reload_error` 有原因。
 - **`bank.freeze --check` 红**：配置或数据被改过（指纹对不上）；不要用 `--write` 覆盖，先查 `git diff configs/`。
 - **`scripts/ci.py` 红**：看最后一道门的末 20 行；只跑 `pytest` 不等于过门。

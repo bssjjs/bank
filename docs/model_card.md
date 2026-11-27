@@ -115,9 +115,9 @@ ROC-AUC `[0.6262, 0.6654]`、Brier `[0.2750, 0.2938]`。区间只说明这 3,556
 ## 8. 复现
 
 ```powershell
-.venv\Scripts\python.exe -m bank.freeze
-.venv\Scripts\python.exe -m bank_training.train
-.venv\Scripts\python.exe -m bank_training.experiments
+uv run python -m bank.freeze
+uv run python -m bank_training.train
+uv run python -m bank_training.experiments
 ```
 
 前者产出冻结集；后两条把参数、数据指纹、指标、模型文件记进 `mlflow.db`（`data/processed/runs.json` 存 run_id）。报告里的每个数字都能在这两条命令的输出里找到。
